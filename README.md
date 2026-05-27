@@ -4,6 +4,12 @@
 
 Molecular orbital isosurface visualization tool — streamlined GUI for Multiwfn, VMD, and Tachyon.
 
+## 视频教程
+
+[![轨道等值面可视化工具大升级！](https://img.shields.io/badge/Bilibili-视频教程-00A1D6?style=flat&logo=bilibili)](https://www.bilibili.com/video/BV1spGC68Eej/)
+
+> 🎬 [轨道等值面可视化工具大升级！PyQt5 重写，颜值与体验双双起飞](https://www.bilibili.com/video/BV1spGC68Eej/)
+
 ## 功能
 
 - **fchk 文件 → 轨道 cube 文件**（调用 Multiwfn）
