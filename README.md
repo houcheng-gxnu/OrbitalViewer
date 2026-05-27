@@ -24,9 +24,14 @@
 
 ## Download
 
-Pre-built executable (no Python required):
+Pre-built executables (no Python required):
 
-📥 **[OrbitalViewer.exe](https://cnb.cool/chem311/OrbitalViewer/-/tree/main/dist)** (~58 MB)
+| Version | Download |
+|---------|----------|
+| 中文版 | `OrbitalViewer_zh.exe` |
+| English | `OrbitalViewer_en.exe` |
+
+📁 **[Browse all downloads →](https://cnb.cool/chem311/OrbitalViewer/-/tree/main/dist)**
 
 ## Dependencies
 
@@ -88,7 +93,9 @@ python orbital_viewer.py folder/ --mo h,l --iso 0.05
 ├── fchk_orbital.py         # Backend (cube gen, VMD control, rendering)
 ├── fchk_orbital.ini        # External tool path configuration
 ├── orbital_viewer_zh.spec  # PyInstaller spec
-├── dist/OrbitalViewer.exe  # Pre-built executable
+├── dist/
+│   ├── OrbitalViewer_zh.exe  # 中文版预编译
+│   └── OrbitalViewer_en.exe  # English pre-built
 └── README.md
 ```
 
