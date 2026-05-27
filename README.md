@@ -26,7 +26,7 @@
 
 Pre-built executable (no Python required):
 
-📥 **[OrbitalViewer.exe](https://cnb.cool/chem311/OrbitalViewer/-/raw/main/dist/OrbitalViewer.exe)** (~58 MB)
+📥 **[OrbitalViewer.exe](https://cnb.cool/chem311/OrbitalViewer/-/tree/main/dist)** (~58 MB)
 
 ## Dependencies
 
