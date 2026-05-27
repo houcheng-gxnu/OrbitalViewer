@@ -1,6 +1,6 @@
 # OrbitalViewer
 
-[![Bilibili](https://img.shields.io/badge/Bilibili-视频教程-00A1D6?style=flat&logo=bilibili)](https://www.bilibili.com/video/BV1spGC68Eej/)
+[![Bilibili](https://img.shields.io/badge/Bilibili-视频教程-00A1D6?style=flat&logo=bilibili)](https://www.bilibili.com/video/BV1V5Gm6pEGr/)
 
 **OrbitalViewer** — 基于 PyQt5 的分子轨道等值面可视化工具，一键串联 Multiwfn → VMD → Tachyon 工作流。
 
@@ -18,7 +18,7 @@
 
 ## 视频教程
 
-> 🎬 [轨道等值面可视化工具大升级！PyQt5 重写，颜值与体验双双起飞](https://www.bilibili.com/video/BV1spGC68Eej/)
+> 🎬 [OrbitalViewer: From fchk to Publication-Ready Image in 2 Minutes](https://www.bilibili.com/video/BV1V5Gm6pEGr/)
 
 ## 下载
 
