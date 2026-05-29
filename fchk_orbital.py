@@ -901,7 +901,19 @@ display height 10
 # ── Multiwfn: Single fchk -> cube ───────────────────────
 def gen_cube(fchk_path, orbital="h", grid_quality=2,
              multiwfn_exe=None, work_dir=None):
-    """Call Multiwfn to generate orbital wavefunction cube file."""
+    """Call Multiwfn to generate orbital wavefunction cube file.
+    
+    For open-shell systems (UHF/ROHF), use:
+    - Positive indices or "ha", "la", "ha-1" for alpha orbitals
+    - Negative indices or "hb", "lb", "hb-1" for beta orbitals
+    
+    Args:
+        fchk_path: Path to fchk file
+        orbital: Orbital identifier (h/l/h-1/number/ha/hb/la/lb)
+        grid_quality: Grid quality (1-5)
+        multiwfn_exe: Path to Multiwfn executable
+        work_dir: Working directory for output
+    """
     if multiwfn_exe is None:
         multiwfn_exe = DEFAULT_MULTIWFN
     if work_dir is None:
@@ -915,6 +927,12 @@ def gen_cube(fchk_path, orbital="h", grid_quality=2,
     if not os.path.exists(ascii_fchk):
         shutil.copy2(fchk_path, ascii_fchk)
 
+    # Command sequence: 5 -> 4 -> orbital -> grid -> 2 -> 0 -> q
+    # For open-shell systems, orbital can be:
+    # - ha/hb/la/lb for HOMO/LUMO alpha/beta
+    # - ha-1, hb+2, etc. for shifted orbitals
+    # - Positive numbers for alpha orbitals
+    # - Negative numbers for beta orbitals
     inputs = (
         "\n" + fchk_name + "\n5\n4\n" + orbital + "\n"
         + str(grid_quality) + "\n2\n0\nq\n"
@@ -948,7 +966,20 @@ def gen_multi_cubes(fchk_path, orbitals, grid_quality=2,
                     multiwfn_exe=None, work_dir=None):
     """
     Call Multiwfn to generate multiple orbital wavefunction cube files.
-    orbitals: List of orbitals, e.g., ['h', 'l', 'h-1', 'l+1'] or ['5', '6', '7', '8']
+    
+    For open-shell systems (UHF/ROHF), use:
+    - ha/hb/la/lb for HOMO/LUMO alpha/beta
+    - ha-1, hb+2, etc. for shifted orbitals
+    - Positive numbers for alpha orbitals
+    - Negative numbers for beta orbitals
+    
+    Args:
+        fchk_path: Path to fchk file
+        orbitals: List of orbitals, e.g., ['h', 'l', 'h-1', 'l+1'] or ['ha', 'hb', 'la', 'lb']
+        grid_quality: Grid quality (1-5)
+        multiwfn_exe: Path to Multiwfn executable
+        work_dir: Working directory for output
+    
     Returns: [(cube_path, orbital_name), ...] or None
     """
     if multiwfn_exe is None:
@@ -975,6 +1006,7 @@ def gen_multi_cubes(fchk_path, orbitals, grid_quality=2,
         if not os.path.exists(ascii_fchk):
             shutil.copy2(fchk_path, ascii_fchk)
 
+        # Command sequence: 5 -> 4 -> orbital -> grid -> 2 -> 0 -> q
         inputs = (
             "\n" + fchk_name + "\n5\n4\n" + str(orbital) + "\n"
             + str(grid_quality) + "\n2\n0\nq\n"

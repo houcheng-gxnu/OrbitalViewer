@@ -850,35 +850,19 @@ class OrbitalVisApp(QMainWindow):
         hint.setObjectName("HintLabel")
         layout.addWidget(hint, row, 4)
 
-        # Quick orbital buttons
+        # Naming rules
         row += 1
-        layout.addWidget(QLabel("Quick:"), row, 0)
-        quick_frame = QHBoxLayout()
-        quick_frame.setSpacing(2)
-        for txt, val in [
-            ("H", "h"), ("L", "l"), ("H-1", "h-1"), ("L+1", "l+1"),
-            ("H-2", "h-2"), ("L+2", "l+2"),
-        ]:
-            btn = QPushButton(txt)
-            btn.setObjectName("SmallBtn")
-            btn.setFixedWidth(35)
-            btn.clicked.connect(lambda checked, v=val: self._add_orbital(v))
-            quick_frame.addWidget(btn)
-        layout.addLayout(quick_frame, row, 1, 1, 4)
-
-        row += 1
-        multi_frame = QHBoxLayout()
-        multi_frame.setSpacing(3)
-        for txt, val in [
-            ("H+L", "h,l"),
-            ("H-1+H+L+L+1", "h-1,h,l,l+1"),
-            ("H-2+H-1+H+L+L+1+L+2", "h-2,h-1,h,l,l+1,l+2"),
-        ]:
-            btn = QPushButton(txt)
-            btn.setObjectName("SmallBtn")
-            btn.clicked.connect(lambda checked, v=val: self.var_orbital.setText(v))
-            multi_frame.addWidget(btn)
-        layout.addLayout(multi_frame, 3, 1, 1, 4)
+        rules = (
+            "<b>Orbital Naming Rules:</b><br>"
+            "• Closed-shell: h=HOMO, l=LUMO, h-1=HOMO-1, number=orbital index<br>"
+            "• Open-shell: positive=alpha orbital, negative=beta orbital<br>"
+            "• Open-shell symbols: ha=alpha HOMO, hb=beta HOMO, la=alpha LUMO, lb=beta LUMO<br>"
+            "• Examples: hb-5=beta HOMO-5, la+3=alpha LUMO+3, -131=beta orbital 131"
+        )
+        rule_label = QLabel(rules)
+        rule_label.setStyleSheet("color: #555; font-size: 8.5pt;")
+        rule_label.setWordWrap(True)
+        layout.addWidget(rule_label, row, 0, 1, 5)
 
         for c in range(5):
             layout.setColumnStretch(c, 0)
