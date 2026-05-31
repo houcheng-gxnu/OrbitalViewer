@@ -24,10 +24,11 @@ from PyQt5.QtWidgets import (
     QFrame, QSplitter, QScrollArea, QGridLayout, QSizePolicy,
     QSlider, QTabWidget,
 )
+from PyQt5 import QtCore
 from PyQt5.QtCore import Qt, QThread, pyqtSignal, QTimer, QPropertyAnimation, QEasingCurve
 from PyQt5.QtGui import (
     QFont, QColor, QPalette, QFontDatabase, QTextCursor, QKeySequence,
-    QLinearGradient, QBrush, QPainter
+    QLinearGradient, QBrush, QPainter, QPixmap, QIcon,
 )
 
 # ── Import backend from original module ──────────────────
@@ -876,12 +877,13 @@ class OrbitalVisApp(QMainWindow):
         rlayout.setHorizontalSpacing(6)
 
         rlayout.addWidget(QLabel("Style:"), 0, 0)
-        style_names = list(backend.STYLES.keys())
-        style_display = [f"{n}  ({backend.STYLES[n]['desc']})" for n in style_names]
         self.var_style = QComboBox()
-        self.var_style.addItems(style_display)
+        self.var_style.setIconSize(QtCore.QSize(30, 13))
+        self.var_style.setMinimumWidth(420)
+        for name in backend.STYLES:
+            icon = self._make_style_icon(backend.STYLES[name])
+            self.var_style.addItem(icon, f"  {name}")
         self.var_style.setCurrentIndex(0)
-        self.var_style.setMinimumWidth(320)
         rlayout.addWidget(self.var_style, 0, 1, 1, 4)
 
         rlayout.addWidget(QLabel("Resolution:"), 1, 0)
@@ -955,30 +957,37 @@ class OrbitalVisApp(QMainWindow):
         layout = QHBoxLayout(grp)
         layout.setSpacing(8)
 
+        btn_min_width = 160
+
         self.btn_run = QPushButton("◆  Generate Cube")
         self.btn_run.setObjectName("PrimaryBtn")
+        self.btn_run.setMinimumWidth(btn_min_width)
         self.btn_run.clicked.connect(self._run_cubes)
         layout.addWidget(self.btn_run)
 
         self.btn_preview = QPushButton("◇  Preview (Single)")
         self.btn_preview.setEnabled(False)
+        self.btn_preview.setMinimumWidth(btn_min_width)
         self.btn_preview.clicked.connect(self._preview_single)
         layout.addWidget(self.btn_preview)
 
         self.btn_preview_multi = QPushButton("◇  Preview (Multi)")
         self.btn_preview_multi.setEnabled(False)
+        self.btn_preview_multi.setMinimumWidth(btn_min_width)
         self.btn_preview_multi.clicked.connect(self._preview_multi)
         layout.addWidget(self.btn_preview_multi)
 
         self.btn_render = QPushButton("◆  Render Current View")
         self.btn_render.setObjectName("RenderBtn")
         self.btn_render.setEnabled(False)
+        self.btn_render.setMinimumWidth(btn_min_width)
         self.btn_render.clicked.connect(self._render_view)
         layout.addWidget(self.btn_render)
 
         self.btn_stop = QPushButton("■  Stop")
         self.btn_stop.setObjectName("StopBtn")
         self.btn_stop.setEnabled(False)
+        self.btn_stop.setMinimumWidth(btn_min_width)
         self.btn_stop.clicked.connect(self._stop)
         layout.addWidget(self.btn_stop)
 
@@ -1139,6 +1148,34 @@ class OrbitalVisApp(QMainWindow):
             super().keyPressEvent(event)
 
     # ── Helper Methods ──
+
+    def _make_style_icon(self, style):
+        """Build a dual-color icon (pos|neg) for style combo preview."""
+        VMD_BUILTIN = {
+            12: (0.00, 1.00, 0.00),  # green
+            22: (0.00, 0.00, 1.00),  # blue
+        }
+        def _rgb(color_entry):
+            if color_entry[1] is not None:
+                return [int(c * 255) for c in color_entry[1:4]]
+            return [int(c * 255) for c in VMD_BUILTIN.get(color_entry[0], (0.5, 0.5, 0.5))]
+
+        pos = style.get("pos_color", [31, 0.5, 0.5, 0.5])
+        neg = style.get("neg_color", [32, 0.5, 0.5, 0.5])
+        r1, g1, b1 = _rgb(pos)
+        r2, g2, b2 = _rgb(neg)
+
+        pm = QPixmap(30, 13)
+        pm.fill(Qt.transparent)
+        p = QPainter(pm)
+        p.setRenderHint(QPainter.Antialiasing)
+        p.setPen(Qt.NoPen)
+        p.setBrush(QColor(r1, g1, b1))
+        p.drawRoundedRect(0, 0, 14, 13, 2, 2)
+        p.setBrush(QColor(r2, g2, b2))
+        p.drawRoundedRect(16, 0, 14, 13, 2, 2)
+        p.end()
+        return QIcon(pm)
 
     def _append_log(self, msg):
         self.log_text.moveCursor(QTextCursor.End)
@@ -1369,7 +1406,7 @@ class OrbitalVisApp(QMainWindow):
                 self.iso_value_label.setText(f"{iso:.3f}")
                 self.opacity_slider.setEnabled(True)
                 if self.current_opacity is None:
-                    style = backend.STYES.get(style_name, backend.STYES["sob-art"])
+                    style = backend.STYLES.get(style_name, backend.STYLES["sob-art"])
                     self.current_opacity = style["surface_mat"][5]
                 self.opacity_slider.blockSignals(True)
                 self.opacity_slider.setValue(int(self.current_opacity * 100))
@@ -1480,7 +1517,7 @@ class OrbitalVisApp(QMainWindow):
                 self.iso_value_label.setText(f"{iso:.3f}")
                 self.opacity_slider.setEnabled(True)
                 if self.current_opacity is None:
-                    style = backend.STYES.get(style_name, backend.STYES["sob-art"])
+                    style = backend.STYLES.get(style_name, backend.STYLES["sob-art"])
                     self.current_opacity = style["surface_mat"][5]
                 self.opacity_slider.blockSignals(True)
                 self.opacity_slider.setValue(int(self.current_opacity * 100))
@@ -1686,14 +1723,14 @@ class OrbitalVisApp(QMainWindow):
 
     def _key_opacity_up(self):
         if self.current_opacity is None:
-            style = backend.STYES.get(self._get_style_name(), backend.STYES["sob-art"])
+            style = backend.STYLES.get(self._get_style_name(), backend.STYLES["sob-art"])
             self.current_opacity = style["surface_mat"][5]
         self.current_opacity = round(min(self.current_opacity + self.opacity_step, 1.0), 2)
         self._apply_opacity_change()
 
     def _key_opacity_down(self):
         if self.current_opacity is None:
-            style = backend.STYES.get(self._get_style_name(), backend.STYES["sob-art"])
+            style = backend.STYLES.get(self._get_style_name(), backend.STYLES["sob-art"])
             self.current_opacity = style["surface_mat"][5]
         self.current_opacity = round(max(self.current_opacity - self.opacity_step, 0.05), 2)
         self._apply_opacity_change()
@@ -1780,7 +1817,7 @@ def main():
         p.add_argument("--iso", type=float, default=0.05, help="Isosurface threshold")
         p.add_argument("--grid", default="2", help="Grid quality (1/2/3)")
         p.add_argument("--style", default="sob_Gold",
-                       choices=list(backend.STYES.keys()), help="Render style")
+                       choices=list(backend.STYLES.keys()), help="Render style")
         p.add_argument("--res", default="2000,1500", help="Resolution width,height")
         p.add_argument("--no-render", action="store_true", help="Generate cube only")
         p.add_argument("--out", default=None)
