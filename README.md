@@ -6,6 +6,8 @@
 
 **一键串联 Multiwfn → VMD → Tachyon 工作流，从 fchk 到期刊精美轨道图，两分钟搞定。**
 
+> 🏫 **广西师范大学 侯成课题组**  \> Guangxi Normal University, Hou Cheng Research Group
+
 ---
 
 ## ✨ 功能
