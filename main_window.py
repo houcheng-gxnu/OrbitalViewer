@@ -389,18 +389,18 @@ class OrbitalVisApp(QMainWindow):
         rlayout.addLayout(shade_frame, 1, 3)
 
         self.lbl_trans_raster = QLabel("")
-        rlayout.addWidget(self.lbl_trans_raster, 1, 4)
+        rlayout.addWidget(self.lbl_trans_raster, 3, 0)
         self.var_trans_raster = QComboBox()
         self.var_trans_raster.addItems(["Raster3D", "VMD-match", "Orig", "Off"])
         self.var_trans_raster.setCurrentIndex(0)  # default: Raster3D
         self.var_trans_raster.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
-        rlayout.addWidget(self.var_trans_raster, 1, 5)
+        rlayout.addWidget(self.var_trans_raster, 3, 1)
         self.lbl_render_threads = QLabel("")
-        rlayout.addWidget(self.lbl_render_threads, 2, 0)
+        rlayout.addWidget(self.lbl_render_threads, 3, 2)
         self.var_threads = QLineEdit("8")
         self.var_threads.setMaximumWidth(50)
         self.var_threads.setAlignment(Qt.AlignCenter)
-        rlayout.addWidget(self.var_threads, 1, 6)
+        rlayout.addWidget(self.var_threads, 3, 3)
 
         # hidden
         self.var_auto = QCheckBox("")
