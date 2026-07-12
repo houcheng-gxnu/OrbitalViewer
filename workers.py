@@ -153,14 +153,18 @@ class RenderWorker(QThread):
     def run(self):
         import fchk_orbital as backend
 
+        self.log_signal.emit(tr("log_render_start", style=self.style_name))
         t0 = time.time()
         try:
             png = backend.render_current_view(
                 self.port, self.render_dir, output_png=self.output_png,
                 resolution=self.resolution,
                 tachyon_exe=self.tachyon_exe,
+                style_name=self.style_name,
+                shade_mode=self.shade_mode,
                 trans_raster=self.trans_raster,
-                threads=self.num_threads)
+                threads=self.num_threads,
+                log_func=lambda msg: self.log_signal.emit(msg))
             dt = time.time() - t0
             if png and os.path.exists(png):
                 self.log_signal.emit(tr("log_render_done", dt=dt, path=os.path.basename(png)))
