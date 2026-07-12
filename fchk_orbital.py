@@ -2106,13 +2106,13 @@ puts "==========================================="
 def render_current_view(port, render_dir, output_png=None,
                         tachyon_exe=None, resolution=(2000, 1500),
                         style_name="sob-art", shade_mode="full",
-                        trans_raster=True, threads=4, log_func=None):
+                        trans_mode=None, threads=4, log_func=None):
     """
     Connect to VMD's socket server, send render Tachyon command,
     then render to PNG with Tachyon.
     
     Parameters:
-        trans_raster: Whether to enable -trans_raster3d option
+        trans_mode: Tachyon transparency mode: "vmd"|"raster3d"|"orig" or None (off)
         threads: Number of Tachyon rendering threads
         log_func: Optional callback function(str) to receive log/error messages
     """
@@ -2194,10 +2194,9 @@ def render_current_view(port, render_dir, output_png=None,
         "-numthreads", str(threads), "-aasamples", "24"]
     if shade_flag:
         args.append(shade_flag)
-    # Add -trans_raster3d based on user selection
-    if trans_raster and s["tachyon_options"]:
-        extra = s["tachyon_options"].split()
-        args.extend(extra)
+    # Add -trans_xxx based on user selection
+    if trans_mode:
+        args.append(f"-trans_{trans_mode}")
 
     try:
         result = subprocess.run(

@@ -137,7 +137,7 @@ class RenderWorker(QThread):
     finished_signal = pyqtSignal(str)
 
     def __init__(self, port, render_dir, output_png, tachyon_exe, resolution,
-                 style_name="sob-art", shade_mode="full", trans_raster=True,
+                 style_name="sob-art", shade_mode="full", trans_mode=None,
                  num_threads=8):
         super().__init__()
         self.port = port
@@ -147,7 +147,7 @@ class RenderWorker(QThread):
         self.resolution = resolution
         self.style_name = style_name
         self.shade_mode = shade_mode
-        self.trans_raster = trans_raster
+        self.trans_mode = trans_mode
         self.num_threads = num_threads
 
     def run(self):
@@ -162,7 +162,7 @@ class RenderWorker(QThread):
                 tachyon_exe=self.tachyon_exe,
                 style_name=self.style_name,
                 shade_mode=self.shade_mode,
-                trans_raster=self.trans_raster,
+                trans_mode=self.trans_mode,
                 threads=self.num_threads,
                 log_func=lambda msg: self.log_signal.emit(msg))
             dt = time.time() - t0

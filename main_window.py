@@ -388,11 +388,15 @@ class OrbitalVisApp(QMainWindow):
         shade_frame.addWidget(self.rb_noshadow)
         rlayout.addLayout(shade_frame, 1, 3)
 
-        self.var_trans_raster = QCheckBox("")
-        self.var_trans_raster.setChecked(True)
-        rlayout.addWidget(self.var_trans_raster, 1, 4)
+        self.lbl_trans_raster = QLabel("")
+        rlayout.addWidget(self.lbl_trans_raster, 1, 4)
+        self.var_trans_raster = QComboBox()
+        self.var_trans_raster.addItems(["Raster3D", "VMD-match", "Orig", "Off"])
+        self.var_trans_raster.setCurrentIndex(0)  # default: Raster3D
+        self.var_trans_raster.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
+        rlayout.addWidget(self.var_trans_raster, 1, 5)
         self.lbl_render_threads = QLabel("")
-        rlayout.addWidget(self.lbl_render_threads, 1, 5)
+        rlayout.addWidget(self.lbl_render_threads, 2, 0)
         self.var_threads = QLineEdit("8")
         self.var_threads.setMaximumWidth(50)
         self.var_threads.setAlignment(Qt.AlignCenter)
@@ -707,7 +711,15 @@ class OrbitalVisApp(QMainWindow):
         self.rb_noshadow.setText(self._tr("rb_medium"))
         self.var_auto.setText(self._tr("chk_auto"))
         self.var_open.setText(self._tr("chk_open"))
-        self.var_trans_raster.setText(self._tr("chk_trans_raster"))
+        self.lbl_trans_raster.setText(self._tr("chk_trans_raster"))
+        items = [self._tr("trans_raster3d"), self._tr("trans_vmd"),
+                 self._tr("trans_orig"), self._tr("trans_off")]
+        current = self.var_trans_raster.currentIndex()
+        self.var_trans_raster.clear()
+        self.var_trans_raster.addItems(items)
+        if current < len(items):
+            self.var_trans_raster.setCurrentIndex(current)
+        self.var_trans_raster.setToolTip(self._tr("tooltip_trans_raster"))
         self.lbl_render_threads.setText(self._tr("lbl_threads"))
 
         # Shading tooltips
@@ -1816,14 +1828,15 @@ class OrbitalVisApp(QMainWindow):
             orbital_suffix = "_".join(orbitals) if orbitals else "multi"
             output_png = os.path.join(out, f"{fchk_name}_MO{orbital_suffix}.png") if out else None
 
-        trans_raster = self.var_trans_raster.isChecked()
+        trans_mode = {0: "raster3d", 1: "vmd", 2: "orig"}.get(
+            self.var_trans_raster.currentIndex(), None)
         threads = int(self.var_threads.text())
 
         self.btn_render.setEnabled(False)
         self.render_worker = RenderWorker(
             self.vmd_port, self.vmd_render_dir, output_png,
             exe_paths["tachyon"], resolution, style_name,
-            shade_mode, trans_raster, threads)
+            shade_mode, trans_mode, threads)
         self.render_worker.log_signal.connect(self._append_log)
         self.render_worker.finished_signal.connect(self._on_render_done)
         self.render_worker.start()

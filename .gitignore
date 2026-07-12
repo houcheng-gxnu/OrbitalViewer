@@ -8,3 +8,4 @@ build/
 venv/
 .DS_Store
 Thumbs.db
+fchk_orbital.ini
