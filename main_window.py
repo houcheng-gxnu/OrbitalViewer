@@ -379,13 +379,13 @@ class OrbitalVisApp(QMainWindow):
         shade_frame = QHBoxLayout()
         shade_frame.setSpacing(4)
         self.shade_group = QButtonGroup(self)
-        self.rb_full = QRadioButton("")
-        self.rb_medium = QRadioButton("")
-        self.shade_group.addButton(self.rb_full, 0)
-        self.shade_group.addButton(self.rb_medium, 1)
-        self.rb_full.setChecked(True)
-        shade_frame.addWidget(self.rb_full)
-        shade_frame.addWidget(self.rb_medium)
+        self.rb_shadow = QRadioButton("")
+        self.rb_noshadow = QRadioButton("")
+        self.shade_group.addButton(self.rb_shadow, 0)
+        self.shade_group.addButton(self.rb_noshadow, 1)
+        self.rb_shadow.setChecked(True)
+        shade_frame.addWidget(self.rb_shadow)
+        shade_frame.addWidget(self.rb_noshadow)
         rlayout.addLayout(shade_frame, 1, 3)
 
         self.var_trans_raster = QCheckBox("")
@@ -703,16 +703,16 @@ class OrbitalVisApp(QMainWindow):
         self.lbl_neg_phase.setText(self._tr("lbl_neg_phase"))
         self.lbl_render_res.setText(self._tr("lbl_res"))
         self.lbl_render_shading.setText(self._tr("lbl_shading"))
-        self.rb_full.setText(self._tr("rb_full"))
-        self.rb_medium.setText(self._tr("rb_medium"))
+        self.rb_shadow.setText(self._tr("rb_full"))
+        self.rb_noshadow.setText(self._tr("rb_medium"))
         self.var_auto.setText(self._tr("chk_auto"))
         self.var_open.setText(self._tr("chk_open"))
         self.var_trans_raster.setText(self._tr("chk_trans_raster"))
         self.lbl_render_threads.setText(self._tr("lbl_threads"))
 
         # Shading tooltips
-        self.rb_full.setToolTip(self._tr("tooltip_full"))
-        self.rb_medium.setToolTip(self._tr("tooltip_medium"))
+        self.rb_shadow.setToolTip(self._tr("tooltip_full"))
+        self.rb_noshadow.setToolTip(self._tr("tooltip_medium"))
         self.var_trans_raster.setToolTip(self._tr("tooltip_trans_raster"))
         self.var_threads.setToolTip(self._tr("tooltip_threads"))
 
@@ -1316,7 +1316,7 @@ class OrbitalVisApp(QMainWindow):
         except (ValueError, AttributeError):
             resolution = (2000, 1500)
         shade_id = self.shade_group.checkedId()
-        shade_mode = "full" if shade_id == 0 else "medium"
+        shade_mode = "full" if shade_id == 0 else "noshadow"
         return orbital, iso, grid, style_name, resolution, shade_mode
 
     # ── Browse Methods ──

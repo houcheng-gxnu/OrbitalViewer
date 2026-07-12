@@ -909,6 +909,9 @@ def _gen_multi_orbital_tcl(cube_files, isovalues, base_style_name, shade_mode="f
     if shade_mode == "medium":
         shadow_on = True
         ao_on = False
+    elif shade_mode == "noshadow":
+        shadow_on = False
+        ao_on = False
     else:
         shadow_on = s["shadows"] == "on"
         ao_on = s["ao"] == "on"
@@ -1208,6 +1211,8 @@ def _style_tcl_mol(mol_name, style_name="sob-art", representation="CPK",
 
     if shade_mode == "medium":
         shadow_on, ao_on = True, False
+    elif shade_mode == "noshadow":
+        shadow_on, ao_on = False, False
     else:
         shadow_on = s["shadows"] == "on"
         ao_on = s["ao"] == "on"
@@ -1575,6 +1580,8 @@ def _live_style_tcl(style_name, shade_mode="full", n_mols=1,
 
     if shade_mode == "medium":
         shadow_on, ao_on = True, False
+    elif shade_mode == "noshadow":
+        shadow_on, ao_on = False, False
     else:
         shadow_on = s["shadows"] == "on"
         ao_on = s["ao"] == "on"
@@ -1624,6 +1631,8 @@ def _live_style_tcl_mol(style_name, shade_mode="full"):
     # shadows / ao
     if shade_mode == "medium":
         shadow_on, ao_on = True, False
+    elif shade_mode == "noshadow":
+        shadow_on, ao_on = False, False
     else:
         shadow_on = s["shadows"] == "on"
         ao_on = s["ao"] == "on"
@@ -1677,6 +1686,9 @@ def _style_tcl(cube_name, isovalue, style_name, shade_mode="full", keep_h_indice
     # Shadows/AO: shade_mode overrides style defaults
     if shade_mode == "medium":
         shadow_on = True
+        ao_on = False
+    elif shade_mode == "noshadow":
+        shadow_on = False
         ao_on = False
     else:  # full
         shadow_on = s["shadows"] == "on"
@@ -2171,15 +2183,17 @@ def render_current_view(port, render_dir, output_png=None,
     _log(f"  vmdscene.dat 已生成 ({dat_size} 字节)，开始 Tachyon 渲染...")
 
     # Tachyon rendering: shade_mode determines lighting level
-    shade_flag = "-fullshade" if shade_mode == "full" else "-mediumshade"
+    if shade_mode == "noshadow":
+        shade_flag = None
+    else:
+        shade_flag = "-fullshade" if shade_mode == "full" else "-mediumshade"
     bmp_name = "_render.bmp"
-    args = [
-        tachyon_exe, "vmdscene.dat",
+    args = [tachyon_exe, "vmdscene.dat",
         "-format", "BMP", "-o", bmp_name,
         "-res", str(resolution[0]), str(resolution[1]),
-        "-numthreads", str(threads), "-aasamples", "24",
-        shade_flag,
-    ]
+        "-numthreads", str(threads), "-aasamples", "24"]
+    if shade_flag:
+        args.append(shade_flag)
     # Add -trans_raster3d based on user selection
     if trans_raster and s["tachyon_options"]:
         extra = s["tachyon_options"].split()
@@ -2279,15 +2293,17 @@ def render_cube_auto(cube_path, output_png=None, isovalue=0.05,
             shutil.rmtree(tmp_dir, ignore_errors=True)
         return None
 
-    shade_flag = "-fullshade" if shade_mode == "full" else "-mediumshade"
+    if shade_mode == "noshadow":
+        shade_flag = None
+    else:
+        shade_flag = "-fullshade" if shade_mode == "full" else "-mediumshade"
     bmp_name = "_render.bmp"
-    args = [
-        tachyon_exe, "vmdscene.dat",
+    args = [tachyon_exe, "vmdscene.dat",
         "-format", "BMP", "-o", bmp_name,
         "-res", str(resolution[0]), str(resolution[1]),
-        "-numthreads", "4", "-aasamples", "24",
-        shade_flag,
-    ]
+        "-numthreads", "4", "-aasamples", "24"]
+    if shade_flag:
+        args.append(shade_flag)
     if s["tachyon_options"]:
         extra = s["tachyon_options"].split()
         args.extend(extra)
