@@ -434,13 +434,6 @@ class OrbitalVisApp(QMainWindow):
         self.btn_render.clicked.connect(self._render_view)
         layout.addWidget(self.btn_render)
 
-        self.btn_preview_mol = QPushButton("")
-        self.btn_preview_mol.setObjectName("ActionBtn")
-        self.btn_preview_mol.setEnabled(False)
-        self.btn_preview_mol.clicked.connect(self._preview_mol)
-        self.btn_preview_mol.hide()
-        layout.addWidget(self.btn_preview_mol)
-
         self.btn_flip_phase = QPushButton("")
         self.btn_flip_phase.setObjectName("ActionBtn")
         self.btn_flip_phase.setEnabled(False)
@@ -732,7 +725,6 @@ class OrbitalVisApp(QMainWindow):
         self.btn_preview.setText(self._tr("btn_preview"))
         self.btn_render.setText(self._tr("btn_render_view"))
         self.btn_flip_phase.setText(self._tr("btn_flip_phase"))
-        self.btn_preview_mol.setText(self._tr("btn_preview_mol"))
 
         # Live adjustments
         self.lbl_live_iso.setText(self._tr("lbl_isovalue"))
@@ -1362,10 +1354,8 @@ class OrbitalVisApp(QMainWindow):
                 self.mol_canvas.set_data(atoms, bonds)
                 self._current_fchk = None
                 self.btn_run.setEnabled(False)
-                self.btn_preview.setEnabled(False)
+                self.btn_preview.setEnabled(True)
                 self.btn_render.setEnabled(False)
-                self.btn_preview_mol.setEnabled(True)
-                self.btn_preview_mol.show()
                 self.chk_dash_mode.setEnabled(True)
                 self._update_color_buttons()
                 # Show log file info
@@ -1548,7 +1538,6 @@ class OrbitalVisApp(QMainWindow):
             self.opacity_slider.setEnabled(True)
             self.opacity_edit.setEnabled(True)
             self.btn_render.setEnabled(True)
-            self.btn_preview_mol.setEnabled(False)
             self.btn_undo_bond.setEnabled(True)
             self.btn_clear_bond.setEnabled(True)
             self.btn_h_filter.setEnabled(True)
@@ -1572,10 +1561,16 @@ class OrbitalVisApp(QMainWindow):
 
     def _preview(self):
         path = self.var_path.text().strip()
+
+        # .log/.out 文件：预览分子结构
+        ext = os.path.splitext(path)[1].lower() if os.path.isfile(path) else ""
+        if ext in (".log", ".out"):
+            self._preview_mol()
+            return
+
         out = self._get_out_dir(path)
 
         # 如果是直接载入的 .cub 文件，用已有的 cube 列表
-        ext = os.path.splitext(path)[1].lower() if os.path.isfile(path) else ""
         if ext in (".cub", ".cube") and self._current_cubes:
             all_cubes = list(self._current_cubes)
         else:
@@ -2444,8 +2439,6 @@ class OrbitalVisApp(QMainWindow):
             self.btn_undo_bond.setEnabled(False)
             self.btn_clear_bond.setEnabled(False)
             self.btn_flip_phase.setEnabled(False)
-            self.btn_preview_mol.setEnabled(False)
-            self.btn_preview_mol.hide()
             self.iso_slider.setEnabled(False)
             self.opacity_slider.setEnabled(False)
             self.iso_edit.setEnabled(False)
