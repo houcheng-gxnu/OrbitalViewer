@@ -90,6 +90,7 @@ class VMDOrbitalSession:
         self._current_opacity = None
         self._multi_cubes = None
         self._vmd_state = {"rep_pos": 1, "rep_neg": 2, "molid": 0}
+        self._mol_mode = False  # True = molecule-only preview (log file)
         self._vmd_process = None
 
     # ── Cube 加载 ──────────────────────────────────────
@@ -194,10 +195,13 @@ class VMDOrbitalSession:
             return True
 
         sm = shade_mode or "full"
-        n_mols = len(self._multi_cubes) if self._multi_cubes else 1
 
         try:
-            live_tcl = backend._live_style_tcl(style_name, shade_mode=sm, n_mols=n_mols)
+            if self._mol_mode:
+                live_tcl = backend._live_style_tcl_mol(style_name, shade_mode=sm)
+            else:
+                n_mols = len(self._multi_cubes) if self._multi_cubes else 1
+                live_tcl = backend._live_style_tcl(style_name, shade_mode=sm, n_mols=n_mols)
             tcl_path = os.path.join(self.render_dir, "_live_style.tcl")
             with open(tcl_path, "w", encoding="utf-8") as f:
                 f.write(live_tcl)

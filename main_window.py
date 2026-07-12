@@ -1530,6 +1530,13 @@ class OrbitalVisApp(QMainWindow):
             self.vmd_port = port
             self.vmd_render_dir = render_dir
             self._vmd_proc = vmd_proc
+            # ── 同步 VMD 会话状态 ──
+            self._vmd_session.port = port
+            self._vmd_session.render_dir = render_dir
+            self._vmd_session._current_style = style_name
+            self._vmd_session._current_isovalue = 0.0
+            self._vmd_session._multi_cubes = None
+            self._vmd_session._mol_mode = True
             self._reset_orbital_state(xyz_path, 0.0)
             self._vmd_state["molid"] = 0
             self._vmd_orbital_labels = [os.path.basename(xyz_path)]
@@ -1651,6 +1658,8 @@ class OrbitalVisApp(QMainWindow):
                 self._vmd_session._current_style = style_name
                 self._vmd_session._current_isovalue = iso
                 self.vmd_multi_cubes = None
+                self._vmd_session._multi_cubes = None
+                self._vmd_session._mol_mode = False
                 self._reset_orbital_state(cube_path, iso)   # 统一管理状态
                 self.btn_render.setEnabled(True)
                 self.btn_undo_bond.setEnabled(True)
@@ -1737,6 +1746,7 @@ class OrbitalVisApp(QMainWindow):
                 self._vmd_session._current_style = style_name
                 self._vmd_session._current_isovalue = iso
                 self._vmd_session._multi_cubes = copied_cubes
+                self._vmd_session._mol_mode = False
                 self.vmd_multi_cubes = copied_cubes
                 self.vmd_cube_path = None
                 self.btn_render.setEnabled(True)

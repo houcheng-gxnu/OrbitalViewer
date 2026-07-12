@@ -1613,6 +1613,55 @@ if {{[info proc _apply_live_style] ne ""}} {{rename _apply_live_style ""}}
     return tcl
 
 
+def _live_style_tcl_mol(style_name, shade_mode="full"):
+    """Generate TCL for live style update in molecule-only mode (CPK atoms, no isosurface)."""
+    s = STYLES.get(style_name, STYLES["sob-art"])
+
+    # lights
+    light_reset = "\n".join(f"light {k} off" for k in range(4)) + "\n"
+    light_set = "\n".join(f"light {k} {v}" for k, v in s["lights"].items()) + "\n"
+
+    # shadows / ao
+    if shade_mode == "medium":
+        shadow_on, ao_on = True, False
+    else:
+        shadow_on = s["shadows"] == "on"
+        ao_on = s["ao"] == "on"
+    shadow_tcl = (f"display shadows {'on' if shadow_on else 'off'}\n"
+                  f"display ambientocclusion {'on' if ao_on else 'off'}\n"
+                  f"display aoambient {s.get('aoambient', '0.8')}\n"
+                  f"display aodirect {s.get('aodirect', '0.3')}\n")
+
+    # atom material only (no surface materials)
+    mat_names = ["ambient", "diffuse", "specular", "shininess", "mirror",
+                 "opacity", "outline", "outlinewidth", "transmode"]
+    atom_tcl = "if {[lsearch [material list] _stl_atom] < 0} {material add _stl_atom}\n"
+    for name, val in zip(mat_names, s["atom_mat"]):
+        atom_tcl += f"material change {name} _stl_atom {val}\n"
+
+    # carbon color
+    carbon_tcl = (f"color Element C {s.get('c_color', 'silver')}\n"
+                  f"color change rgb {s.get('c_color', 'silver')} "
+                  f"{s.get('c_rgb', '0.75 0.75 0.75')}\n")
+
+    tcl = f"""if {{[info proc _apply_live_style] ne ""}} {{rename _apply_live_style ""}}
+proc _apply_live_style {{}} {{
+# Lights + shadows
+{light_reset}{light_set}{shadow_tcl}
+# Atom material
+{atom_tcl}# Remap atom rep
+mol modmaterial 0 top _stl_atom
+# CPK C color
+{carbon_tcl}# Display
+display redraw
+display update
+}}
+_apply_live_style
+if {{[info proc _apply_live_style] ne ""}} {{rename _apply_live_style ""}}
+"""
+    return tcl
+
+
 def _style_tcl(cube_name, isovalue, style_name, shade_mode="full", keep_h_indices=None):
     """Generate VMD TCL setup script based on style name (excluding socket server and render commands).
     shade_mode: 'full'=full shadows, 'medium'=medium shadows, 'noshadow'=no shadows
