@@ -17,12 +17,13 @@ from PyQt5.QtWidgets import (
     QFrame, QSplitter, QScrollArea, QGridLayout, QSizePolicy,
     QSlider, QTabWidget, QDialog, QDialogButtonBox, QFormLayout,
     QTextBrowser, QTableWidget, QTableWidgetItem, QHeaderView,
+    QListView,
 )
 from PyQt5 import QtCore
 from PyQt5.QtCore import Qt, QTimer, QPropertyAnimation, QEasingCurve
 from PyQt5.QtGui import (
-    QFont, QColor, QPalette, QFontDatabase, QTextCursor, QKeySequence,
-    QLinearGradient, QRadialGradient, QBrush, QPainter, QPen,
+    QFont, QColor, QPalette, QFontDatabase, QTextCursor, QTextCharFormat,
+    QKeySequence, QLinearGradient, QRadialGradient, QBrush, QPainter, QPen,
     QPainterPath, QPixmap, QIcon, QDoubleValidator,
 )
 
@@ -42,6 +43,155 @@ from workers import CubeWorker, RenderWorker
 from widgets import SciFiGroupBox
 from dialogs import OrbitalBrowserDialog
 
+
+class _PopupLimitedComboBox(QComboBox):
+    """QComboBox 子类，固定下拉弹出窗口高度"""
+    def __init__(self, max_popup_height=180, parent=None):
+        super().__init__(parent)
+        self._popup_height = max_popup_height
+
+        view = QListView(self)
+        view.setUniformItemSizes(True)
+        view.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
+        view.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        view.setMinimumHeight(160)
+        view.setMaximumHeight(160)
+        self.setView(view)
+
+        self.setMaxVisibleItems(5)
+
+    def showPopup(self):
+        super().showPopup()
+        popup = self.view().window()
+        popup.setFixedHeight(self._popup_height)
+
+
+class DashBondDialog(QDialog):
+    """弹出窗口：分子画布 + 虚线绘制控制面板"""
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self._parent = parent
+        self.setWindowTitle(parent._tr("chk_dash_mode") if parent else "虚线模式")
+        self.resize(700, 650)
+        self.setMinimumSize(500, 400)
+
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(8, 8, 8, 8)
+        layout.setSpacing(6)
+
+        # 画布
+        canvas_frame = QFrame()
+        canvas_frame.setObjectName("ViewerFrame")
+        canvas_frame.setAutoFillBackground(True)
+        canvas_frame.setMinimumSize(300, 300)
+        cl = QVBoxLayout(canvas_frame)
+        cl.setContentsMargins(0, 0, 0, 0)
+        cl.setSpacing(0)
+        # 复用主窗口的 MolCanvas
+        self.mol_canvas = parent.mol_canvas
+        cl.addWidget(self.mol_canvas, stretch=1)
+
+        # 画布底部工具栏
+        vbar = QWidget()
+        vbar.setMaximumHeight(36)
+        vbhl = QHBoxLayout(vbar)
+        vbhl.setContentsMargins(6, 2, 6, 2)
+        vbhl.setSpacing(6)
+        lbl_mode = QLabel(parent._tr("lbl_label_mode") if parent else "标签")
+        vbhl.addWidget(lbl_mode)
+        cb_label = QComboBox()
+        cb_label.addItems([
+            parent._tr("label_mode_elem") if parent else "元素",
+            parent._tr("label_mode_index") if parent else "序号",
+            parent._tr("label_mode_none") if parent else "无",
+        ])
+        cb_label.setMaximumWidth(60)
+        cb_label.currentIndexChanged.connect(
+            lambda idx: (setattr(self.mol_canvas, 'label_mode', idx), self.mol_canvas.update())
+        )
+        cb_label.setCurrentIndex(1)  # 序号模式（在 connect 之后，确保初始生效）
+        vbhl.addWidget(cb_label)
+        vbhl.addStretch()
+        btn_reset = QPushButton(parent._tr("btn_reset_view") if parent else "重置视角")
+        btn_reset.setMaximumHeight(26)
+        btn_reset.clicked.connect(lambda: (self.mol_canvas.auto_fit(), self.mol_canvas.update()))
+        vbhl.addWidget(btn_reset)
+        cl.addWidget(vbar)
+        layout.addWidget(canvas_frame, stretch=1)
+
+        # 启用虚线模式
+        self.mol_canvas.set_dash_bond_mode(True)
+
+        # 虚线控制面板
+        dash_panel = parent._build_draw_bond_panel(target=self)
+        layout.addWidget(dash_panel)
+
+        # 填充下拉框选项并连接信号（populate 后 connect，避免初始化时触发）
+        self._init_bond_combos(parent)
+        self.var_dash_color.currentIndexChanged.connect(parent._on_dash_color_changed)
+        self.var_bond_type.currentIndexChanged.connect(parent._vmd_reapply_dashes)
+        self.var_bond_mat.currentIndexChanged.connect(parent._vmd_reapply_dashes)
+
+        # 初始设置文字
+        self._apply_lang()
+
+    def _init_bond_combos(self, parent):
+        """初始化虚线颜色和类型的下拉框（blockSignals 防触发）。"""
+        idx = 1 if parent._lang == "en" else 2
+        self.var_dash_color.blockSignals(True)
+        for it in parent._bond_color_items:
+            self.var_dash_color.addItem(it[idx])
+        self.var_dash_color.setCurrentText("黑色" if parent._lang == "zh" else "Black")
+        self.var_dash_color.blockSignals(False)
+
+        self.var_bond_type.blockSignals(True)
+        for it in parent._bond_type_items:
+            self.var_bond_type.addItem(it[idx])
+        self.var_bond_type.setCurrentText("圆点" if parent._lang == "zh" else "Dots")
+        self.var_bond_type.blockSignals(False)
+
+    def showEvent(self, event):
+        """弹窗打开时启用虚线模式"""
+        super().showEvent(event)
+
+    def _enable_dash_controls(self):
+        """启用弹窗内的虚线控件"""
+        self.chk_dash_mode.setEnabled(True)
+        self.chk_dash_mode.setChecked(True)
+        self.btn_undo_bond.setEnabled(True)
+        self.btn_clear_bond.setEnabled(True)
+
+    def _apply_lang(self):
+        """弹窗语言切换"""
+        if not self._parent:
+            return
+        p = self._parent
+        self.setWindowTitle(p._tr("chk_dash_mode"))
+        self.grp_draw_bond.setTitle(p._tr("grp_draw_bond"))
+        self.lbl_bond_color.setText(p._tr("lbl_color"))
+        self.lbl_bond_type.setText(p._tr("lbl_type"))
+        self.lbl_bond_mat.setText(p._tr("lbl_material"))
+        self.lbl_bond_segments.setText(p._tr("lbl_segments"))
+        self.lbl_bond_radius.setText(p._tr("lbl_radius"))
+        self.btn_undo_bond.setText(p._tr("btn_undo"))
+        self.btn_clear_bond.setText(p._tr("btn_clear_all"))
+        self.chk_dash_mode.setText(p._tr("chk_dash_mode"))
+        self._parent._populate_bond_combos()
+
+    def closeEvent(self, event):
+        # 关闭弹窗时退出虚线模式
+        if self.mol_canvas:
+            self.mol_canvas.set_dash_bond_mode(False)
+            if self._parent:
+                self._parent._update_dash_status()
+                # 同步弹窗控件值到主窗口 _dash_params
+                dp = self._parent._dash_params
+                if hasattr(self, 'bond_nbars_slider'):
+                    dp['gap'] = self.bond_nbars_slider.value() / 100.0
+                    dp['radius'] = self.bond_radius_slider.value() / 100.0
+                super().closeEvent(event)
+
+
 class OrbitalVisApp(QMainWindow):
     def __init__(self):
         super().__init__()
@@ -58,6 +208,7 @@ class OrbitalVisApp(QMainWindow):
         self._vmd_persist_sock = None  # 已废弃，保留兼容
         self._vmd_dash_pairs = []
         self.vmd_multi_cubes = None
+        self._dash_dialog = None
         # 应用图标
         icon_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "OV.png")
         if os.path.exists(icon_path):
@@ -72,6 +223,31 @@ class OrbitalVisApp(QMainWindow):
         # ── 轨道状态管理（统一追踪 rep/molid/phase） ──
         self._vmd_state = {"rep_pos": 1, "rep_neg": 2, "molid": 0}
         self.opacity_step = 0.05
+        # ── 虚线绘制共享参数（弹窗控件 → VMD 绘制） ──
+        self._dash_params = {
+            'gap': 0.2, 'radius': 0.06,
+            'color_hex': '#000000', 'mat': 'Opaque', 'type': 'dots'
+        }
+        self._bond_color_items = [
+            ("black",  "Black",  "黑色",   "#000000"),
+            ("gray",   "Gray",   "灰色",   "#808080"),
+            ("cyan",   "Cyan",   "青色",   "#00FFFF"),
+            ("yellow", "Yellow", "黄色",   "#FFFF00"),
+            ("red",    "Red",    "红色",   "#FF0000"),
+            ("blue",   "Blue",    "蓝色",   "#0000FF"),
+            ("green",  "Green",  "绿色",   "#00FF00"),
+            ("white",  "White",  "白色",   "#FFFFFF"),
+        ]
+        self._bond_type_items = [
+            ("dots",     "Dots",          "圆点"),
+            ("pymol",    "Dashed(pymol)", "PyMOL虚线"),
+            ("cylinder", "Cylinder",      "圆柱"),
+            ("cone",     "Cone",          "锥形"),
+            ("line",     "Line",          "线段"),
+        ]
+        self._bond_mat_map = {
+            "Opaque": "Opaque", "Transparent": "Transparent",
+            "50%Transparent": "HalfTransparent"}
 
         self._current_cubes = []
         # 拖放支持
@@ -90,6 +266,12 @@ class OrbitalVisApp(QMainWindow):
         self._apply_theme()
         self._apply_lang_ui()
 
+        # 启动日志
+        self._append_log("═" * 50)
+        self._append_log("OrbitalViewer 5.3 已启动 — 欢迎使用轨道可视化工具")
+        self._append_log("请拖放 .fchk / .log 文件到界面，或使用「浏览轨道」载入轨道数据")
+        self._append_log("═" * 50)
+
     def _setup_ui(self):
         central = QWidget()
         self.setCentralWidget(central)
@@ -103,58 +285,14 @@ class OrbitalVisApp(QMainWindow):
         body_layout.setContentsMargins(0, 0, 0, 0)
         body_layout.setSpacing(4)
 
-        # 左侧: 分子画布 + 运行日志
+        # 左侧: 仅保留运行日志（画布移至独立的虚线模式弹窗）
         left_widget = QWidget()
         left_layout = QVBoxLayout(left_widget)
         left_layout.setContentsMargins(0, 0, 0, 0)
         left_layout.setSpacing(4)
 
-        viewer_wrap = QFrame()
-        viewer_wrap.setObjectName("ViewerFrame")
-        viewer_wrap.setAutoFillBackground(True)
-        viewer_wrap.setMinimumSize(300, 300)
-        vl = QVBoxLayout(viewer_wrap)
-        vl.setContentsMargins(0, 0, 0, 0)
-        vl.setSpacing(0)
-        self.mol_canvas = MolCanvas(viewer_wrap)
-        vl.addWidget(self.mol_canvas, stretch=1)
-
-        # 画布底部工具栏
-        vbar = QWidget()
-        vbar.setMaximumHeight(36)
-        vbhl = QHBoxLayout(vbar)
-        vbhl.setContentsMargins(6, 2, 6, 2)
-        vbhl.setSpacing(6)
-
-        # 标签模式
-        self.lbl_mode = QLabel()
-        _fs = self.lbl_mode.font(); _fs.setPointSizeF(7.5); self.lbl_mode.setFont(_fs)
-        vbhl.addWidget(self.lbl_mode)
-        self.cb_label = QComboBox()
-        self.cb_label.setCurrentIndex(1)
-        self.cb_label.setMaximumWidth(60)
-        _fs = self.cb_label.font(); _fs.setPointSizeF(7.5); self.cb_label.setFont(_fs)
-        self.cb_label.currentIndexChanged.connect(
-            lambda idx: (setattr(self.mol_canvas, 'label_mode', idx), self.mol_canvas.update())
-        )
-        vbhl.addWidget(self.cb_label)
-
-        vbhl.addStretch()
-
-        self.btn_reset_view = QPushButton()
-        self.btn_reset_view.setObjectName("GhostBtn")
-        self.btn_reset_view.setMaximumHeight(26)
-        _fs = self.btn_reset_view.font(); _fs.setPointSizeF(7.5); self.btn_reset_view.setFont(_fs)
-        self.btn_reset_view.clicked.connect(lambda: (
-            self.mol_canvas.auto_fit(),
-            self.mol_canvas.update()
-        ))
-        vbhl.addWidget(self.btn_reset_view)
-
-        vl.addWidget(vbar)
-
-        # 画布
-        left_layout.addWidget(viewer_wrap)
+        # 创建 MolCanvas 实例但不加到主窗口布局中（由弹窗复用）
+        self.mol_canvas = MolCanvas(None)
 
         # 左侧画布区与右侧参数区的分隔
         scroll_right = QScrollArea()
@@ -169,12 +307,21 @@ class OrbitalVisApp(QMainWindow):
         tab_setup_layout.addWidget(self._build_orbital_panel())
         # 轨道表格 — 嵌入第一个选项卡，载入 fchk 后自动填充
         self.orbital_tabs = QTabWidget()
-        self.orbital_tabs.setMinimumHeight(400)
         self.orbital_table_alpha = self._make_orbital_table()
         self.orbital_tabs.addTab(self.orbital_table_alpha, "")
         self.orbital_table_beta = None
-        tab_setup_layout.addWidget(self.orbital_tabs)
-        tab_setup_layout.addStretch()
+        # 提示 tab（固定在最左边）
+        self.tab_hint = QWidget()
+        self.orbital_tabs.insertTab(0, self.tab_hint, "")
+        self.orbital_tabs.setTabEnabled(0, False)
+        self.tab_hint.setStyleSheet("background:#3498DB; color:white;")
+        idx = self.orbital_tabs.indexOf(self.tab_hint)
+        self.orbital_tabs.setTabText(idx, self._tr("tab_orbit_hint"))
+        # 设置 tab 栏样式（提示 tab #1565C0 蓝底白字）
+        self.orbital_tabs.setStyleSheet("""
+            QTabBar::tab:disabled { background:#1565C0; color:white; border:1px solid #0D47A1; border-bottom:none; }
+        """)
+        tab_setup_layout.addWidget(self.orbital_tabs, 1)
         self.tabs.addTab(tab_setup, "")
 
         tab_style = QWidget()
@@ -184,7 +331,6 @@ class OrbitalVisApp(QMainWindow):
         tab_style_layout.addWidget(self._build_render_params_panel())
         tab_style_layout.addWidget(self._build_live_panel())
         tab_style_layout.addWidget(self._build_buttons_panel())
-        tab_style_layout.addWidget(self._build_draw_bond_panel())
         tab_style_layout.addStretch()
         self.tabs.addTab(tab_style, "")
 
@@ -219,15 +365,27 @@ class OrbitalVisApp(QMainWindow):
         body_splitter.setStretchFactor(1, 2)
         body_layout.addWidget(body_splitter, stretch=1)
 
-        # ── 日志区（下方固定高度） ──
+        # ── 日志区（QTextCursor + QTextCharFormat，不使用 HTML） ──
+        self.grp_log = SciFiGroupBox("")
+        log_layout = QVBoxLayout(self.grp_log)
+        log_layout.setContentsMargins(4, 8, 4, 4)
+        log_layout.setSpacing(2)
         self.log_text = QTextEdit()
         self.log_text.setReadOnly(True)
-        self.log_text.setMaximumHeight(160)
-        self.log_text.setStyleSheet(
-            "font-family: Consolas, 'Courier New', monospace; font-size: 12px;"
-            "border: 1px solid #CBD5E1; border-radius: 4px;"
-        )
-        body_layout.addWidget(self.log_text)
+        self.log_text.setUndoRedoEnabled(False)
+        self.log_text.setLineWrapMode(QTextEdit.WidgetWidth)
+        self.log_text.setMinimumHeight(240)
+        self.log_text.setStyleSheet("""
+            QTextEdit{
+                border:none;
+                background:transparent;
+                padding:8px;
+                font-family:"Consolas","JetBrains Mono","Microsoft YaHei UI";
+                font-size:16px;
+            }
+        """)
+        log_layout.addWidget(self.log_text)
+        body_layout.addWidget(self.grp_log)
 
         main_layout.addWidget(body, stretch=5)
 
@@ -319,29 +477,32 @@ class OrbitalVisApp(QMainWindow):
         rlayout.setVerticalSpacing(4)
         rlayout.setHorizontalSpacing(6)
 
-        # 风格 + 自定义颜色，全部放一行
+        # 风格下拉框（占满可用宽度）
         self.lbl_render_style = QLabel("")
-        self.var_style = QComboBox()
+        self.var_style = _PopupLimitedComboBox(max_popup_height=200)
         self.var_style.setIconSize(QtCore.QSize(30, 13))
-        self.var_style.setMaxVisibleItems(20)
+        self.var_style.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
+        self.var_style.setMaximumWidth(480)
         for name in backend.STYLES:
             icon = self._make_style_icon(backend.STYLES[name])
             self.var_style.addItem(icon, f"  {name}")
         self.var_style.setCurrentIndex(0)
         self.var_style.currentTextChanged.connect(self._on_style_changed)
 
+        # 正相位颜色按钮
         self.btn_pos_color = QPushButton("")
-        self.btn_pos_color.setFixedSize(28, 28)
+        self.btn_pos_color.setFixedSize(24, 24)
         self.btn_pos_color.setToolTip(self._tr("pick_pos_color"))
-        self.btn_pos_color.setStyleSheet("background:#00AA00; border:1px solid #555; border-radius:14px;")
+        self.btn_pos_color.setStyleSheet("background:#00AA00; border:1px solid #555; border-radius:12px;")
         self.btn_pos_color.clicked.connect(lambda: self._pick_phase_color("pos"))
         self.btn_pos_color.setContextMenuPolicy(Qt.CustomContextMenu)
         self.btn_pos_color.customContextMenuRequested.connect(lambda: self._reset_phase_color("pos"))
 
+        # 负相位颜色按钮
         self.btn_neg_color = QPushButton("")
-        self.btn_neg_color.setFixedSize(28, 28)
+        self.btn_neg_color.setFixedSize(24, 24)
         self.btn_neg_color.setToolTip(self._tr("pick_neg_color"))
-        self.btn_neg_color.setStyleSheet("background:#0000AA; border:1px solid #555; border-radius:14px;")
+        self.btn_neg_color.setStyleSheet("background:#0000AA; border:1px solid #555; border-radius:12px;")
         self.btn_neg_color.clicked.connect(lambda: self._pick_phase_color("neg"))
         self.btn_neg_color.setContextMenuPolicy(Qt.CustomContextMenu)
         self.btn_neg_color.customContextMenuRequested.connect(lambda: self._reset_phase_color("neg"))
@@ -349,6 +510,7 @@ class OrbitalVisApp(QMainWindow):
         self.lbl_pos_phase = QLabel("")
         self.lbl_neg_phase = QLabel("")
 
+        # ── 布局：样式 + 正负相位，全部一行 ──
         top_row = QHBoxLayout()
         top_row.setSpacing(6)
         top_row.setContentsMargins(0, 0, 0, 0)
@@ -356,9 +518,11 @@ class OrbitalVisApp(QMainWindow):
         top_row.addWidget(self.var_style, 1)
         top_row.addSpacing(12)
         top_row.addWidget(self.lbl_pos_phase)
+        top_row.addSpacing(6)
         top_row.addWidget(self.btn_pos_color)
-        top_row.addSpacing(8)
+        top_row.addSpacing(12)
         top_row.addWidget(self.lbl_neg_phase)
+        top_row.addSpacing(6)
         top_row.addWidget(self.btn_neg_color)
         rlayout.addLayout(top_row, 0, 0, 1, 7)
 
@@ -367,40 +531,42 @@ class OrbitalVisApp(QMainWindow):
         self.var_res.addItems(["2000x1500", "1200x900", "3000x2250"])
         self.var_res.setCurrentIndex(0)
         self.var_res.setMaximumWidth(150)
-        res_row = QHBoxLayout()
-        res_row.setSpacing(4)
-        res_row.setContentsMargins(0, 0, 0, 0)
-        res_row.addWidget(self.lbl_render_res)
-        res_row.addWidget(self.var_res, 1)
-        rlayout.addLayout(res_row, 1, 0, 1, 2)
 
         self.lbl_render_shading = QLabel("")
-        rlayout.addWidget(self.lbl_render_shading, 1, 2)
-        shade_frame = QHBoxLayout()
-        shade_frame.setSpacing(4)
         self.shade_group = QButtonGroup(self)
         self.rb_shadow = QRadioButton("")
         self.rb_noshadow = QRadioButton("")
         self.shade_group.addButton(self.rb_shadow, 0)
         self.shade_group.addButton(self.rb_noshadow, 1)
         self.rb_shadow.setChecked(True)
-        shade_frame.addWidget(self.rb_shadow)
-        shade_frame.addWidget(self.rb_noshadow)
-        rlayout.addLayout(shade_frame, 1, 3)
 
         self.lbl_trans_raster = QLabel("")
-        rlayout.addWidget(self.lbl_trans_raster, 3, 0)
         self.var_trans_raster = QComboBox()
         self.var_trans_raster.addItems(["Raster3D", "VMD-match", "Orig", "Off"])
         self.var_trans_raster.setCurrentIndex(0)  # default: Raster3D
         self.var_trans_raster.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
-        rlayout.addWidget(self.var_trans_raster, 3, 1)
         self.lbl_render_threads = QLabel("")
-        rlayout.addWidget(self.lbl_render_threads, 3, 2)
         self.var_threads = QLineEdit("8")
         self.var_threads.setMaximumWidth(50)
         self.var_threads.setAlignment(Qt.AlignCenter)
-        rlayout.addWidget(self.var_threads, 3, 3)
+
+        # ── 合并行：分辨率 + 阴影 + 透明度 + 线程数 ──
+        row2 = QHBoxLayout()
+        row2.setSpacing(6)
+        row2.setContentsMargins(0, 0, 0, 0)
+        row2.addWidget(self.lbl_render_res)
+        row2.addWidget(self.var_res)
+        row2.addSpacing(12)
+        row2.addWidget(self.lbl_render_shading)
+        row2.addWidget(self.rb_shadow)
+        row2.addWidget(self.rb_noshadow)
+        row2.addSpacing(12)
+        row2.addWidget(self.lbl_trans_raster)
+        row2.addWidget(self.var_trans_raster)
+        row2.addSpacing(12)
+        row2.addWidget(self.lbl_render_threads)
+        row2.addWidget(self.var_threads)
+        rlayout.addLayout(row2, 1, 0, 1, 7)
 
         # hidden
         self.var_auto = QCheckBox("")
@@ -449,6 +615,12 @@ class OrbitalVisApp(QMainWindow):
         self.btn_h_filter.setEnabled(False)
         self.btn_h_filter.clicked.connect(self._toggle_h_filter)
         layout.addWidget(self.btn_h_filter)
+
+        self.btn_dash_mode = QPushButton("")
+        self.btn_dash_mode.setObjectName("ActionBtn")
+        self.btn_dash_mode.setEnabled(False)
+        self.btn_dash_mode.clicked.connect(self._open_dash_bond_dialog)
+        layout.addWidget(self.btn_dash_mode)
 
         self.lbl_h_keep = QLabel("")
         layout.addWidget(self.lbl_h_keep)
@@ -506,121 +678,103 @@ class OrbitalVisApp(QMainWindow):
         return self.grp_live
 
 
-    def _build_draw_bond_panel(self):
-        """VMD 虚线样式面板 — 移植自 MolViewer。"""
-        self.grp_draw_bond = SciFiGroupBox("")
-        vmd_layout = QVBoxLayout(self.grp_draw_bond)
-        vmd_layout.setSpacing(4)
+    def _build_draw_bond_panel(self, target=None):
+        """VMD 虚线样式面板。target: 用于分配控件的对象（默认 self）。"""
+        if target is None:
+            target = self
 
-        # (tcl_key, en_label, zh_label, hex_color)
-        self._bond_color_items = [
-            ("black",  "Black",  "黑色",   "#000000"),
-            ("gray",   "Gray",   "灰色",   "#808080"),
-            ("cyan",   "Cyan",   "青色",   "#00FFFF"),
-            ("yellow", "Yellow", "黄色",   "#FFFF00"),
-            ("red",    "Red",    "红色",   "#FF0000"),
-            ("blue",   "Blue",   "蓝色",   "#0000FF"),
-            ("green",  "Green",  "绿色",   "#00FF00"),
-            ("white",  "White",  "白色",   "#FFFFFF"),
-        ]
-        # (tcl_key, en_label, zh_label)
-        self._bond_type_items = [
-            ("dots",     "Dots",          "圆点"),
-            ("pymol",    "Dashed(pymol)", "PyMOL虚线"),
-            ("cylinder", "Cylinder",      "圆柱"),
-            ("cone",     "Cone",          "锥形"),
-            ("line",     "Line",          "线段"),
-        ]
-        self._bond_mat_map = {
-            "Opaque": "Opaque", "Transparent": "Transparent",
-            "50%Transparent": "HalfTransparent"}
+        target.grp_draw_bond = SciFiGroupBox("")
+        vmd_layout = QVBoxLayout(target.grp_draw_bond)
+        vmd_layout.setSpacing(4)
 
         # ── Row 1: 虚线 / 画布样式 / VMD 颜色 / 类型 / 材质 ──
         row1 = QHBoxLayout()
-        self.chk_dash_mode = QCheckBox("")
-        self.chk_dash_mode.setEnabled(False)
-        self.chk_dash_mode.toggled.connect(lambda v: (
-            self.mol_canvas.set_dash_bond_mode(v),
+        target.chk_dash_mode = QCheckBox("")
+        target.chk_dash_mode.setEnabled(False)
+        target.chk_dash_mode.toggled.connect(lambda v: (
+            target.mol_canvas.set_dash_bond_mode(v),
             self._update_dash_status()
         ))
-        row1.addWidget(self.chk_dash_mode)
+        row1.addWidget(target.chk_dash_mode)
 
-        self.lbl_bond_color = QLabel("")
-        row1.addWidget(self.lbl_bond_color)
-        self.var_dash_color = QComboBox()
-        self.var_dash_color.setMaximumWidth(70)
-        self.var_dash_color.currentIndexChanged.connect(self._on_dash_color_changed)
-        row1.addWidget(self.var_dash_color)
+        target.lbl_bond_color = QLabel("")
+        row1.addWidget(target.lbl_bond_color)
+        target.var_dash_color = QComboBox()
+        target.var_dash_color.setMaximumWidth(70)
+        row1.addWidget(target.var_dash_color)
 
-        self.lbl_bond_type = QLabel("")
-        row1.addWidget(self.lbl_bond_type)
-        self.var_bond_type = QComboBox()
-        self.var_bond_type.setMaximumWidth(100)
-        row1.addWidget(self.var_bond_type)
+        target.lbl_bond_type = QLabel("")
+        row1.addWidget(target.lbl_bond_type)
+        target.var_bond_type = QComboBox()
+        target.var_bond_type.setMaximumWidth(100)
+        row1.addWidget(target.var_bond_type)
 
-        self.lbl_bond_mat = QLabel("")
-        row1.addWidget(self.lbl_bond_mat)
-        self.var_bond_mat = QComboBox()
-        self.var_bond_mat.addItems(list(self._bond_mat_map.keys()))
-        self.var_bond_mat.setCurrentText("Opaque")
-        self.var_bond_mat.setMaximumWidth(140)
-        row1.addWidget(self.var_bond_mat)
+        target.lbl_bond_mat = QLabel("")
+        row1.addWidget(target.lbl_bond_mat)
+        target.var_bond_mat = QComboBox()
+        target.var_bond_mat.addItems(list(self._bond_mat_map.keys()))
+        target.var_bond_mat.setCurrentText("Opaque")
+        target.var_bond_mat.setMaximumWidth(140)
+        row1.addWidget(target.var_bond_mat)
         row1.addStretch()
 
-        self.btn_undo_bond = QPushButton("")
-        self.btn_undo_bond.setEnabled(False)
-        self.btn_undo_bond.clicked.connect(self._undo_bond)
-        row1.addWidget(self.btn_undo_bond)
+        target.btn_undo_bond = QPushButton("")
+        target.btn_undo_bond.setEnabled(False)
+        target.btn_undo_bond.clicked.connect(self._undo_bond)
+        row1.addWidget(target.btn_undo_bond)
 
-        self.btn_clear_bond = QPushButton("")
-        self.btn_clear_bond.setEnabled(False)
-        self.btn_clear_bond.clicked.connect(self._clear_bond)
-        row1.addWidget(self.btn_clear_bond)
+        target.btn_clear_bond = QPushButton("")
+        target.btn_clear_bond.setEnabled(False)
+        target.btn_clear_bond.clicked.connect(self._clear_bond)
+        row1.addWidget(target.btn_clear_bond)
 
         vmd_layout.addLayout(row1)
-
-        # 类型/透明度变化 → 实时重绘 VMD 虚线
-        self.var_bond_type.currentIndexChanged.connect(lambda: self._vmd_reapply_dashes())
-        self.var_bond_mat.currentIndexChanged.connect(lambda: self._vmd_reapply_dashes())
 
         # ── Row 2: 段数 / 半径 (label + slider + edit，同行) ──
         grid = QGridLayout()
         grid.setContentsMargins(0, 0, 0, 0)
         grid.setSpacing(4)
 
-        self.lbl_bond_segments = QLabel("")
-        grid.addWidget(self.lbl_bond_segments, 0, 0)
-        self.bond_nbars_slider = QSlider(Qt.Horizontal)
-        self.bond_nbars_slider.setRange(5, 100)
-        self.bond_nbars_slider.setValue(20)
-        self.bond_nbars_slider.valueChanged.connect(self._on_nbars_slider)
-        grid.addWidget(self.bond_nbars_slider, 0, 1)
-        self.bond_nbars_edit = QLineEdit("0.20")
-        self.bond_nbars_edit.setValidator(QDoubleValidator(0.05, 1.00, 2))
-        self.bond_nbars_edit.setMaximumWidth(50)
-        self.bond_nbars_edit.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        self.bond_nbars_edit.editingFinished.connect(self._on_nbars_edit)
-        grid.addWidget(self.bond_nbars_edit, 0, 2)
+        target.lbl_bond_segments = QLabel("")
+        grid.addWidget(target.lbl_bond_segments, 0, 0)
+        target.bond_nbars_slider = QSlider(Qt.Horizontal)
+        target.bond_nbars_slider.setRange(5, 100)
+        target.bond_nbars_slider.setValue(20)
+        target.bond_nbars_slider.valueChanged.connect(self._on_nbars_slider)
+        grid.addWidget(target.bond_nbars_slider, 0, 1)
+        target.bond_nbars_edit = QLineEdit("0.20")
+        target.bond_nbars_edit.setValidator(QDoubleValidator(0.05, 1.00, 2))
+        target.bond_nbars_edit.setMaximumWidth(50)
+        target.bond_nbars_edit.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        target.bond_nbars_edit.editingFinished.connect(self._on_nbars_edit)
+        grid.addWidget(target.bond_nbars_edit, 0, 2)
 
-        self.lbl_bond_radius = QLabel("")
-        grid.addWidget(self.lbl_bond_radius, 0, 3)
-        self.bond_radius_slider = QSlider(Qt.Horizontal)
-        self.bond_radius_slider.setRange(1, 50)
-        self.bond_radius_slider.setValue(6)
-        self.bond_radius_slider.valueChanged.connect(self._on_bond_radius_slider)
-        grid.addWidget(self.bond_radius_slider, 0, 4)
-        self.bond_radius_edit = QLineEdit("0.06")
-        self.bond_radius_edit.setValidator(QDoubleValidator(0.01, 0.50, 2))
-        self.bond_radius_edit.setMaximumWidth(70)
-        self.bond_radius_edit.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        self.bond_radius_edit.editingFinished.connect(self._on_bond_radius_edit)
-        grid.addWidget(self.bond_radius_edit, 0, 5)
+        target.lbl_bond_radius = QLabel("")
+        grid.addWidget(target.lbl_bond_radius, 0, 3)
+        target.bond_radius_slider = QSlider(Qt.Horizontal)
+        target.bond_radius_slider.setRange(1, 50)
+        target.bond_radius_slider.setValue(6)
+        target.bond_radius_slider.valueChanged.connect(self._on_bond_radius_slider)
+        grid.addWidget(target.bond_radius_slider, 0, 4)
+        target.bond_radius_edit = QLineEdit("0.06")
+        target.bond_radius_edit.setValidator(QDoubleValidator(0.01, 0.50, 2))
+        target.bond_radius_edit.setMaximumWidth(70)
+        target.bond_radius_edit.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        target.bond_radius_edit.editingFinished.connect(self._on_bond_radius_edit)
+        grid.addWidget(target.bond_radius_edit, 0, 5)
 
         grid.setColumnStretch(1, 1)
         grid.setColumnStretch(4, 1)
         vmd_layout.addLayout(grid)
 
-        return self.grp_draw_bond
+        # 控件变化 → 同步到主窗口 _dash_params
+        def _sync_dp():
+            self._dash_params['gap'] = target.bond_nbars_slider.value() / 100.0
+            self._dash_params['radius'] = target.bond_radius_slider.value() / 100.0
+        target.bond_nbars_slider.valueChanged.connect(lambda: _sync_dp())
+        target.bond_radius_slider.valueChanged.connect(lambda: _sync_dp())
+
+        return target.grp_draw_bond
 
     def closeEvent(self, event):
         """关闭程序时，强制关闭 VMD（如果仍在运行）。"""
@@ -649,6 +803,8 @@ class OrbitalVisApp(QMainWindow):
         i18n._CURRENT_LANG = "en" if i18n._CURRENT_LANG == "zh" else "zh"
         self._lang = i18n._CURRENT_LANG
         self._apply_lang_ui()
+        if self._dash_dialog:
+            self._dash_dialog._apply_lang()
 
     def _apply_lang_ui(self):
         # Window
@@ -667,25 +823,10 @@ class OrbitalVisApp(QMainWindow):
         self.grp_orbital.setTitle(self._tr("grp_orbital"))
         self.grp_render.setTitle(self._tr("grp_render"))
         self.grp_actions.setTitle(self._tr("grp_actions"))
-        self.grp_draw_bond.setTitle(self._tr("grp_draw_bond"))
-        self._populate_bond_combos()
+        self.grp_log.setTitle(self._tr("grp_log"))
+        # grp_draw_bond now lives in DashBondDialog
 
-        # MolCanvas toolbar
-        self.lbl_mode.setText(self._tr("lbl_label_mode"))
-        self.btn_reset_view.setText(self._tr("btn_reset_view"))
-
-        # Label mode combo - rebuild items
-        label_items = [
-            self._tr("label_mode_elem"),
-            self._tr("label_mode_index"),
-            self._tr("label_mode_none"),
-        ]
-        self.cb_label.blockSignals(True)
-        cur = self.cb_label.currentIndex()
-        self.cb_label.clear()
-        self.cb_label.addItems(label_items)
-        self.cb_label.setCurrentIndex(cur)
-        self.cb_label.blockSignals(False)
+        # MolCanvas toolbar (now in DashBondDialog)
 
         # Input panel
         self.rb_folder.setText(self._tr("rb_folder"))
@@ -700,6 +841,7 @@ class OrbitalVisApp(QMainWindow):
         self.hint_grid.setText(self._tr("hint_grid"))
         self.btn_rules.setToolTip(self._tr("orbital_rules_btn"))
         self.btn_rules.setText(self._tr("orbital_rules_btn"))
+        self.orbital_tabs.setTabText(self.orbital_tabs.indexOf(self.tab_hint), self._tr("tab_orbit_hint"))
 
         # Render params
         self.lbl_render_style.setText(self._tr("lbl_style"))
@@ -737,6 +879,7 @@ class OrbitalVisApp(QMainWindow):
         self.btn_preview.setText(self._tr("btn_preview"))
         self.btn_render.setText(self._tr("btn_render_view"))
         self.btn_flip_phase.setText(self._tr("btn_flip_phase"))
+        self.btn_dash_mode.setText(self._tr("chk_dash_mode"))
 
         # Live adjustments
         self.lbl_live_iso.setText(self._tr("lbl_isovalue"))
@@ -750,17 +893,7 @@ class OrbitalVisApp(QMainWindow):
             self.btn_h_filter.setText(self._tr("btn_hide_h"))
         self.var_h_indices.setPlaceholderText(self._tr("placeholder_h_indices"))
 
-        # Draw bond panel
-        self.lbl_bond_color.setText(self._tr("lbl_color"))
-        self.lbl_bond_type.setText(self._tr("lbl_type"))
-        self.lbl_bond_mat.setText(self._tr("lbl_material"))
-        self.lbl_bond_segments.setText(self._tr("lbl_segments"))
-        self.lbl_bond_radius.setText(self._tr("lbl_radius"))
-        self.btn_undo_bond.setText(self._tr("btn_undo"))
-        self.btn_clear_bond.setText(self._tr("btn_clear_all"))
-
-        # Canvas dash tools
-        self.chk_dash_mode.setText(self._tr("chk_dash_mode"))
+        # Draw bond panel (now in DashBondDialog)
 
         # Progress
         self.progress_label.setText(self._tr("progress_ready"))
@@ -792,7 +925,7 @@ class OrbitalVisApp(QMainWindow):
         if urls:
             path = urls[0].toLocalFile()
             ext = os.path.splitext(path)[1].lower()
-            if ext in (".fchk", ".log", ".out", ".cub", ".cube"):
+            if ext in (".fchk", ".log", ".out", ".cub", ".cube", ".xyz"):
                 self.var_path.setText(path)
                 self._load_molecule(path)
 
@@ -827,9 +960,73 @@ class OrbitalVisApp(QMainWindow):
         return QIcon(pm)
 
     def _append_log(self, msg):
-        self.log_text.moveCursor(QTextCursor.End)
-        self.log_text.insertPlainText(msg + "\n")
-        self.log_text.moveCursor(QTextCursor.End)
+        """追加运行日志 — 纯 QTextCursor + QTextCharFormat，不使用 HTML。"""
+        from datetime import datetime
+        ts = datetime.now().strftime("%H:%M:%S")
+
+        # ── 标签颜色判定（逻辑不变，颜色适配浅色背景） ──
+        if "失败" in msg or "Failed" in msg or "fail" in msg or "错误" in msg:
+            tag_color = QColor("#C0392B")
+            tag = "ERR"
+        elif "成功" in msg or "OK" in msg or "done" in msg or "ready" in msg:
+            tag_color = QColor("#27AE60")
+            tag = " OK"
+        elif "VMD" in msg and ("start" in msg or "Start" in msg or "ready" in msg):
+            tag_color = QColor("#2980B9")
+            tag = "VMD"
+        elif "选中" in msg or "选择" in msg or "Selected" in msg:
+            tag_color = QColor("#8E44AD")
+            tag = "SEL"
+        elif "生成" in msg or "Generating" in msg or "render" in msg.lower():
+            tag_color = QColor("#E67E22")
+            tag = "GEN"
+        elif "写入" in msg or "write" in msg.lower() or "Saved" in msg:
+            tag_color = QColor("#16A085")
+            tag = "WRT"
+        elif "DEBUG" in msg:
+            tag_color = QColor("#95A5A6")
+            tag = "DBG"
+        elif "═" in msg or "━" in msg or "─" in msg:
+            # ── 分隔线 ──
+            cursor = self.log_text.textCursor()
+            cursor.movePosition(QTextCursor.End)
+            cursor.insertBlock()
+            sep_fmt = QTextCharFormat()
+            sep_fmt.setForeground(QColor("#BDC3C7"))
+            cursor.insertText(msg, sep_fmt)
+            cursor.insertBlock()
+            self.log_text.setTextCursor(cursor)
+            self.log_text.ensureCursorVisible()
+            return
+        else:
+            tag_color = QColor("#95A5A6")
+            tag = "INF"
+
+        # ── 构建各段格式 ──
+        # 1) 时间戳 — 浅灰
+        time_fmt = QTextCharFormat()
+        time_fmt.setForeground(QColor("#95A5A6"))
+
+        # 2) 标签 — 彩色粗体
+        tag_fmt = QTextCharFormat()
+        tag_fmt.setForeground(tag_color)
+        tag_fmt.setFontWeight(QFont.Bold)
+
+        # 3) 正文 — 深色（#2C3E50 在浅/深色背景下均清晰可读）
+        body_fmt = QTextCharFormat()
+        body_fmt.setForeground(QColor("#2C3E50"))
+
+        # ── 写入 ──
+        cursor = self.log_text.textCursor()
+        cursor.movePosition(QTextCursor.End)
+        cursor.insertBlock()
+        cursor.insertText(ts + "  ", time_fmt)
+        cursor.insertText("[" + tag + "]", tag_fmt)
+        cursor.insertText("  " + msg, body_fmt)
+
+        # ── 自动滚动到底部 ──
+        self.log_text.setTextCursor(cursor)
+        self.log_text.ensureCursorVisible()
 
     def _set_progress(self, msg):
         self.progress_label.setText(f"◆  {msg}")
@@ -875,6 +1072,46 @@ class OrbitalVisApp(QMainWindow):
         """弹窗显示轨道编号规则。"""
         QMessageBox.information(self, self._tr("orbital_rules_btn"),
                                 self._tr("orbital_rules"))
+
+    def _open_dash_bond_dialog(self):
+        """弹出虚线模式窗口（含画布 + 虚线控制面板）。"""
+        # 确保画布有原子数据
+        if not self.mol_canvas.atoms:
+            QMessageBox.warning(self, self._tr("msg_title_hint"),
+                                self._tr("msg_no_cube"))
+            return
+        # 确保 VMD 已启动
+        if not self.vmd_port:
+            QMessageBox.warning(self, self._tr("msg_title_hint"),
+                                self._tr("msg_preview_first"))
+            return
+        if self._dash_dialog is not None:
+            self._dash_dialog.raise_()
+            self._dash_dialog.activateWindow()
+            return
+        dlg = DashBondDialog(self)
+        self._dash_dialog = dlg
+        # 启用弹窗内的虚线控件
+        dlg._enable_dash_controls()
+        # 同步弹窗控件值到 _dash_params
+        dp = self._dash_params
+        dp['gap'] = dlg.bond_nbars_slider.value() / 100.0
+        dp['radius'] = dlg.bond_radius_slider.value() / 100.0
+        # 同步 Canvas → VMD 回调
+        self.mol_canvas.on_dash_added = self._vmd_draw_dash
+        self.mol_canvas.on_dash_undone = self._vmd_undo_bond
+        self.mol_canvas.on_dash_cleared = self._vmd_clear_bonds
+        # 同步已有的虚线
+        self._vmd_dash_pairs.clear()
+        for a1, a2, _ in self.mol_canvas.custom_dash_lines:
+            pair = (a1, a2)
+            if pair not in self._vmd_dash_pairs:
+                self._vmd_dash_pairs.append(pair)
+        if self._vmd_dash_pairs:
+            self._send_vmd_cmd("")
+            self._vmd_reapply_dashes()
+        dlg.finished.connect(lambda: setattr(self, '_dash_dialog', None))
+        dlg.exec_()
 
     def _open_orbital_browser(self):
         """解析 fchk 并填充画布下方的轨道表格。"""
@@ -964,7 +1201,8 @@ class OrbitalVisApp(QMainWindow):
 
         # ── 填充 α 表 ──
         self._populate_table(self.orbital_table_alpha, alpha_rows, is_open, n_a, orb_sign=1)
-        self.orbital_tabs.setTabText(0, "α 轨道" if is_open else i18n.tr("dlg_orbital_browser"))
+        self.orbital_tabs.setTabText(self.orbital_tabs.indexOf(self.orbital_table_alpha),
+                                      "α 轨道" if is_open else i18n.tr("dlg_orbital_browser"))
 
         # ── 开壳层：创建并填充 β 表 ──
         if is_open and beta_rows:
@@ -1003,8 +1241,22 @@ class OrbitalVisApp(QMainWindow):
             it1 = QTableWidgetItem(f"{ev:.4f}")
             it1.setTextAlignment(Qt.AlignCenter)
             table.setItem(r, 1, it1)
-            # 占据 (col 2)
-            it2 = QTableWidgetItem(f"{occ:.1f}")
+            # 占据 (col 2) — 用 emoji 箭头表示
+            if is_open:
+                # 开壳层：α=⬆️ β=⬇️
+                if occ > 0:
+                    occ_text = "⬆️" if orb_sign > 0 else "⬇️"
+                else:
+                    occ_text = "⬜"
+            else:
+                # 闭壳层：2.0=⬆️⬇️ 0.0=⬜
+                if occ > 1.5:
+                    occ_text = "⬆️⬇️"
+                elif occ > 0.5:
+                    occ_text = "⬆️"
+                else:
+                    occ_text = "⬜"
+            it2 = QTableWidgetItem(occ_text)
             it2.setTextAlignment(Qt.AlignCenter)
             if occ > 0:
                 it2.setBackground(QColor("#E8F5E9"))
@@ -1038,6 +1290,25 @@ class OrbitalVisApp(QMainWindow):
         # ── DEBUG: 切换轨道前的状态 ──
         self._append_log(f"  [DEBUG SWITCH] vmd_port={self.vmd_port} current_iso={self.current_iso} "
                          f"_vmd_state={self._vmd_state} vmd_cube_path={self.vmd_cube_path}")
+        self._auto_preview_orbital(orb_mw)
+
+    def _vmd_visualize_selected(self):
+        """从表格获取选中轨道并在 VMD 中可视化。"""
+        table = self.orbital_tabs.currentWidget()
+        if not table:
+            return
+        row = table.currentRow()
+        if row < 0:
+            QMessageBox.warning(self, self._tr("msg_title_hint"),
+                                "请先选中一个轨道 / Please select an orbital first")
+            return
+        it = table.item(row, 0)
+        if not it:
+            return
+        orb_mw = it.data(Qt.UserRole + 1) or str(it.data(Qt.UserRole))
+        orb_display = str(it.data(Qt.UserRole))
+        self.var_orbital.setText(orb_display)
+        self._append_log(f"VMD可视化: {orb_display}" + (f" ({orb_mw})" if orb_mw != orb_display else ""))
         self._auto_preview_orbital(orb_mw)
 
     def _auto_preview_orbital(self, orb_str):
@@ -1220,6 +1491,8 @@ class OrbitalVisApp(QMainWindow):
                 "<p><b>Multiwfn</b><br>"
                 "本软件的核心计算引擎来自 <b>卢天</b> 老师开发的 "
                 "<b>Multiwfn</b> 多功能波函数分析程序，特此致以最诚挚的感谢！</p>"
+                "<p style='font-size:9pt;color:#c00'>"
+                "⚠️ 使用本软件绘图时，请务必规范引用以下文章：</p>"
                 "<p style='font-size:9pt;color:#666'>"
                 "Tian Lu, Feiwu Chen, <i>Multiwfn: A Multifunctional Wavefunction Analyzer</i>, "
                 "J. Comput. Chem., 2012, 33, 580–592.<br>"
@@ -1243,6 +1516,8 @@ class OrbitalVisApp(QMainWindow):
                 "The core calculation engine of this software comes from <b>Multiwfn</b>, "
                 "a multifunctional wavefunction analysis program developed by <b>Prof. Tian Lu</b>. "
                 "Our sincere gratitude!</p>"
+                "<p style='font-size:9pt;color:#c00'>"
+                "⚠️ If you use this software to generate images, please properly cite the following articles:</p>"
                 "<p style='font-size:9pt;color:#666'>"
                 "Tian Lu, Feiwu Chen, <i>Multiwfn: A Multifunctional Wavefunction Analyzer</i>, "
                 "J. Comput. Chem., 2012, 33, 580–592.<br>"
@@ -1368,7 +1643,7 @@ class OrbitalVisApp(QMainWindow):
                 self.btn_run.setEnabled(False)
                 self.btn_preview.setEnabled(True)
                 self.btn_render.setEnabled(False)
-                self.chk_dash_mode.setEnabled(True)
+                self.btn_dash_mode.setEnabled(True)
                 self._update_color_buttons()
                 # Show log file info
                 log_info = backend.parse_log_info(path)
@@ -1380,6 +1655,24 @@ class OrbitalVisApp(QMainWindow):
             else:
                 self._append_log(f"Failed to parse log file: {os.path.basename(path)}")
                 return
+        elif ext == ".xyz":
+            atoms, bonds = self._parse_xyz(path)
+            if atoms:
+                self.mol_canvas.set_data(atoms, bonds)
+                self._current_fchk = None
+                self.btn_run.setEnabled(False)
+                self.btn_preview.setEnabled(True)
+                self.btn_render.setEnabled(False)
+                self.btn_dash_mode.setEnabled(True)
+                self._update_color_buttons()
+                self._append_log(
+                    f"{len(atoms)} atoms, {len(bonds)} bonds  |  {os.path.basename(path)}")
+                # 清理轨道表格
+                self._clear_orbital_table()
+                return
+            else:
+                self._append_log(f"Failed to parse XYZ file: {os.path.basename(path)}")
+                return
         else:
             return
         try:
@@ -1389,7 +1682,7 @@ class OrbitalVisApp(QMainWindow):
                 self.mol_canvas.set_data(atoms, bonds)
                 self._current_fchk = path
                 self.btn_run.setEnabled(True)  # fchk 需要生成 cub
-                self.chk_dash_mode.setEnabled(True)
+                self.btn_dash_mode.setEnabled(True)
                 self._update_color_buttons()
                 self._append_log(
                     self._tr("mol_hint_atoms",
@@ -1411,7 +1704,43 @@ class OrbitalVisApp(QMainWindow):
             import traceback
             self.log_text.append(f"Parse error: {e}\n{traceback.format_exc()}")
 
+    def _parse_xyz(self, path):
+        """Parse XYZ file → (atoms, bonds) tuples."""
+        atoms = []
+        with open(path, "r", encoding="utf-8", errors="ignore") as f:
+            lines = [l.strip() for l in f if l.strip()]
+        if len(lines) < 3:
+            return [], []
+        try:
+            natom = int(lines[0])
+        except ValueError:
+            return [], []
+        # 跳过 comment 行, 从第2行开始解析原子
+        start = 2 if len(lines) > 2 and not lines[1][0].isalpha() else 1
+        center = 0
+        for line in lines[start:start + natom]:
+            parts = line.split()
+            if len(parts) < 4:
+                continue
+            symbol = parts[0]
+            try:
+                x, y, z = float(parts[1]), float(parts[2]), float(parts[3])
+            except ValueError:
+                continue
+            center += 1
+            atoms.append((center, symbol, 0, (x, y, z)))
+        bonds = get_bonds_from_fchk(atoms) if atoms else []
+        return atoms, bonds
+
     # ── Core Actions ──
+
+    def _clear_orbital_table(self):
+        """清空轨道表格（非 fchk 文件无轨道数据）。"""
+        self.orbital_table_alpha.setRowCount(0)
+        if self.orbital_table_beta:
+            self.orbital_tabs.removeTab(self.orbital_tabs.indexOf(self.orbital_table_beta))
+            self.orbital_table_beta.deleteLater()
+            self.orbital_table_beta = None
 
     def _get_out_dir(self, input_path=None):
         """输出目录 = 输入目录。"""
@@ -1494,8 +1823,8 @@ class OrbitalVisApp(QMainWindow):
         if not path:
             return
         ext = os.path.splitext(path)[1].lower()
-        if ext not in (".log", ".out"):
-            self._append_log("Only .log/.out files supported for molecule preview")
+        if ext not in (".log", ".out", ".xyz"):
+            self._append_log("Only .log/.out/.xyz files supported for molecule preview")
             return
 
         exe_paths = self._get_paths()
@@ -1557,10 +1886,9 @@ class OrbitalVisApp(QMainWindow):
             self.opacity_slider.setEnabled(True)
             self.opacity_edit.setEnabled(True)
             self.btn_render.setEnabled(True)
-            self.btn_undo_bond.setEnabled(True)
-            self.btn_clear_bond.setEnabled(True)
+            self.btn_dash_mode.setEnabled(True)
             self.btn_h_filter.setEnabled(True)
-            self.chk_dash_mode.setEnabled(True)
+            self.btn_flip_phase.setEnabled(False)
             # Canvas → VMD dash sync
             self.mol_canvas.on_dash_added = self._vmd_draw_dash
             self.mol_canvas.on_dash_undone = self._vmd_undo_bond
@@ -1674,10 +2002,8 @@ class OrbitalVisApp(QMainWindow):
                 self._vmd_session._mol_mode = False
                 self._reset_orbital_state(cube_path, iso)   # 统一管理状态
                 self.btn_render.setEnabled(True)
-                self.btn_undo_bond.setEnabled(True)
-                self.btn_clear_bond.setEnabled(True)
+                self.btn_dash_mode.setEnabled(True)
                 self.btn_h_filter.setEnabled(True)
-                self.chk_dash_mode.setEnabled(True)
                 # Canvas → VMD dash sync setup
                 self.mol_canvas.on_dash_added = self._vmd_draw_dash
                 self.mol_canvas.on_dash_undone = self._vmd_undo_bond
@@ -1762,10 +2088,8 @@ class OrbitalVisApp(QMainWindow):
                 self.vmd_multi_cubes = copied_cubes
                 self.vmd_cube_path = None
                 self.btn_render.setEnabled(True)
-                self.btn_undo_bond.setEnabled(True)
-                self.btn_clear_bond.setEnabled(True)
+                self.btn_dash_mode.setEnabled(True)
                 self.btn_h_filter.setEnabled(True)
-                self.chk_dash_mode.setEnabled(True)
                 # Canvas → VMD dash sync setup
                 self.mol_canvas.on_dash_added = self._vmd_draw_dash
                 self.mol_canvas.on_dash_undone = self._vmd_undo_bond
@@ -1909,12 +2233,20 @@ class OrbitalVisApp(QMainWindow):
         x1, y1, z1 = pos1
         x2, y2, z2 = pos2
 
-        gap = self.bond_nbars_slider.value() / 100.0
-        radius = self.bond_radius_slider.value() / 100.0
-        color_hex = getattr(self.mol_canvas, 'dash_color_hex', '#000000')
+        # 读取虚线参数（直接从控件读取，确保实时更新）
+        if self._dash_dialog:
+            gap = self._dash_dialog.bond_nbars_slider.value() / 100.0
+            radius = self._dash_dialog.bond_radius_slider.value() / 100.0
+            mat = self._bond_mat_map.get(self._dash_dialog.var_bond_mat.currentText(), "Opaque")
+            h_type = self._resolve_bond_tcl_key(self._dash_dialog.var_bond_type.currentText(), is_color=False)
+        else:
+            dp = self._dash_params
+            gap = dp.get('gap', 0.2)
+            radius = dp.get('radius', 0.06)
+            mat = self._bond_mat_map.get(dp.get('mat', 'Opaque'), 'Opaque')
+            h_type = dp.get('type', 'dots')
+        color_hex = self._get_bond_color_hex()
         vmd_color = self._hex_to_vmd_color(color_hex)
-        mat = self._bond_mat_map.get(self.var_bond_mat.currentText(), "Opaque")
-        h_type = self._resolve_bond_tcl_key(self.var_bond_type.currentText(), is_color=False)
         h_resol = 6
 
         dx, dy, dz = x2 - x1, y2 - y1, z2 - z1
@@ -2266,8 +2598,6 @@ class OrbitalVisApp(QMainWindow):
 
     def _update_dash_status(self):
         """更新画布虚线模式状态（日志输出）。"""
-        if not hasattr(self, 'chk_dash_mode'):
-            return
         n = len(self.mol_canvas.custom_dash_lines)
         if self.mol_canvas._dash_bond_atom1 is not None:
             self._append_log(f"{self._tr('dash_selected')} {self.mol_canvas._dash_bond_atom1}，{self._tr('dash_select_other')}（{n} {self._tr('dash_lines')}）")
@@ -2285,31 +2615,34 @@ class OrbitalVisApp(QMainWindow):
 
     def _populate_bond_combos(self):
         """根据当前语言重建颜色和类型下拉框。"""
+        if not self._dash_dialog:
+            return
         idx = 1 if self._lang == "en" else 2
+        dlg = self._dash_dialog
 
         # 虚线颜色
-        cur_color = self.var_dash_color.currentText()
-        self.var_dash_color.blockSignals(True)
-        self.var_dash_color.clear()
+        cur_color = dlg.var_dash_color.currentText()
+        dlg.var_dash_color.blockSignals(True)
+        dlg.var_dash_color.clear()
         new_idx = 0
         for i, it in enumerate(self._bond_color_items):
-            self.var_dash_color.addItem(it[idx])
+            dlg.var_dash_color.addItem(it[idx])
             if it[0] == self._resolve_bond_tcl_key(cur_color, is_color=True):
                 new_idx = i
-        self.var_dash_color.setCurrentIndex(new_idx)
-        self.var_dash_color.blockSignals(False)
+        dlg.var_dash_color.setCurrentIndex(new_idx)
+        dlg.var_dash_color.blockSignals(False)
 
         # 虚线类型
-        cur_type = self.var_bond_type.currentText()
-        self.var_bond_type.blockSignals(True)
-        self.var_bond_type.clear()
+        cur_type = dlg.var_bond_type.currentText()
+        dlg.var_bond_type.blockSignals(True)
+        dlg.var_bond_type.clear()
         new_idx = 0
         for i, it in enumerate(self._bond_type_items):
-            self.var_bond_type.addItem(it[idx])
+            dlg.var_bond_type.addItem(it[idx])
             if it[0] == self._resolve_bond_tcl_key(cur_type, is_color=False):
                 new_idx = i
-        self.var_bond_type.setCurrentIndex(new_idx)
-        self.var_bond_type.blockSignals(False)
+        dlg.var_bond_type.setCurrentIndex(new_idx)
+        dlg.var_bond_type.blockSignals(False)
 
     def _resolve_bond_tcl_key(self, label, is_color=False):
         """根据显示标签（中/英）反查 tcl_key。"""
@@ -2321,11 +2654,12 @@ class OrbitalVisApp(QMainWindow):
 
     def _get_bond_color_hex(self):
         """获取当前选择的虚线颜色 hex。"""
-        label = self.var_dash_color.currentText()
-        for it in self._bond_color_items:
-            if label in (it[1], it[2]):
-                return it[3]
-        return "#000000"
+        if self._dash_dialog:
+            label = self._dash_dialog.var_dash_color.currentText()
+            for it in self._bond_color_items:
+                if label in (it[1], it[2]):
+                    return it[3]
+        return self._dash_params.get('color_hex', '#000000')
 
     def _on_dash_color_changed(self):
         """下拉选择虚线颜色 → 同步画布 + VMD。"""
@@ -2333,59 +2667,68 @@ class OrbitalVisApp(QMainWindow):
             return
         hex_str = self._get_bond_color_hex()
         self.mol_canvas.dash_color_hex = hex_str
+        self._dash_params['color_hex'] = hex_str
         self.mol_canvas.update()
         self._vmd_reapply_dashes()
 
     def _sync_dash_to_canvas(self):
         """将虚线面板的参数同步到画布。"""
-        if not hasattr(self, 'bond_nbars_slider'):
+        if not self._dash_dialog or not hasattr(self._dash_dialog, 'bond_nbars_slider'):
             return
-        gap = self.bond_nbars_slider.value() / 100.0
+        gap = self._dash_dialog.bond_nbars_slider.value() / 100.0
         self.mol_canvas.dash_dot_count = max(2, int(3.0 / gap))
-        self.mol_canvas.dash_dot_radius = max(1, self.bond_radius_slider.value())
+        self.mol_canvas.dash_dot_radius = max(1, self._dash_dialog.bond_radius_slider.value())
         self.mol_canvas.repaint()
 
     def _on_nbars_slider(self, val):
         gap = val / 100.0
-        self.bond_nbars_edit.blockSignals(True)
-        self.bond_nbars_edit.setText(f"{gap:.2f}")
-        self.bond_nbars_edit.blockSignals(False)
+        self._dash_params['gap'] = gap
+        if self._dash_dialog:
+            self._dash_dialog.bond_nbars_edit.blockSignals(True)
+            self._dash_dialog.bond_nbars_edit.setText(f"{gap:.2f}")
+            self._dash_dialog.bond_nbars_edit.blockSignals(False)
         self._vmd_reapply_dashes()
         self._sync_dash_to_canvas()
 
     def _on_nbars_edit(self):
+        if not self._dash_dialog:
+            return
         try:
-            gap = float(self.bond_nbars_edit.text())
+            gap = float(self._dash_dialog.bond_nbars_edit.text())
             gap = max(0.05, min(1.00, gap))
         except ValueError:
             return
         val = int(round(gap * 100))
-        self.bond_nbars_slider.blockSignals(True)
-        self.bond_nbars_slider.setValue(val)
-        self.bond_nbars_slider.blockSignals(False)
-        self.bond_nbars_edit.setText(f"{val/100.0:.2f}")
+        self._dash_dialog.bond_nbars_slider.blockSignals(True)
+        self._dash_dialog.bond_nbars_slider.setValue(val)
+        self._dash_dialog.bond_nbars_slider.blockSignals(False)
+        self._dash_dialog.bond_nbars_edit.setText(f"{val/100.0:.2f}")
         self._vmd_reapply_dashes()
         self._sync_dash_to_canvas()
 
     def _on_bond_radius_slider(self, val):
         r = val / 100.0
-        self.bond_radius_edit.blockSignals(True)
-        self.bond_radius_edit.setText(f"{r:.2f}")
-        self.bond_radius_edit.blockSignals(False)
+        self._dash_params['radius'] = r
+        if self._dash_dialog:
+            self._dash_dialog.bond_radius_edit.blockSignals(True)
+            self._dash_dialog.bond_radius_edit.setText(f"{r:.2f}")
+            self._dash_dialog.bond_radius_edit.blockSignals(False)
         self._vmd_reapply_dashes()
         self._sync_dash_to_canvas()
 
     def _on_bond_radius_edit(self):
+        if not self._dash_dialog:
+            return
         try:
-            r = float(self.bond_radius_edit.text())
+            r = float(self._dash_dialog.bond_radius_edit.text())
             r = max(0.01, min(0.50, r))
         except ValueError:
             return
         val = int(round(r * 100))
-        self.bond_radius_slider.blockSignals(True)
-        self.bond_radius_slider.setValue(val)
-        self.bond_radius_slider.blockSignals(False)
-        self.bond_radius_edit.setText(f"{val/100.0:.2f}")
+        self._dash_dialog.bond_radius_slider.blockSignals(True)
+        self._dash_dialog.bond_radius_slider.setValue(val)
+        self._dash_dialog.bond_radius_slider.blockSignals(False)
+        self._dash_dialog.bond_radius_edit.setText(f"{val/100.0:.2f}")
         self._vmd_reapply_dashes()
         self._sync_dash_to_canvas()
 
@@ -2459,8 +2802,7 @@ class OrbitalVisApp(QMainWindow):
             self.btn_preview.setEnabled(False)
             self.btn_render.setEnabled(False)
             self.btn_h_filter.setEnabled(False)
-            self.btn_undo_bond.setEnabled(False)
-            self.btn_clear_bond.setEnabled(False)
+            self.btn_dash_mode.setEnabled(False)
             self.btn_flip_phase.setEnabled(False)
             self.iso_slider.setEnabled(False)
             self.opacity_slider.setEnabled(False)

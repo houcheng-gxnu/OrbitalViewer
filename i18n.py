@@ -70,6 +70,7 @@ TR = {
     "grp_live": {"zh": "LIVE ADJUSTMENTS  (VMD 打开后可用)", "en": "LIVE ADJUSTMENTS  (available once VMD opens)"},
     "grp_hydrogen": {"zh": "隐藏氢原子", "en": "HIDE HYDROGEN"},
     "grp_draw_bond": {"zh": "绘制虚线键", "en": "DRAW DASHED LINE"},
+    "grp_log": {"zh": "运行日志", "en": "LOG"},
     # ── Path panel ──
     "lbl_multiwfn": {"zh": "Multiwfn:", "en": "Multiwfn:"},
     "lbl_vmd": {"zh": "VMD:", "en": "VMD:"},
@@ -104,6 +105,8 @@ TR = {
     },
     "orbital_rules_btn": {"zh": "轨道编号规则", "en": "Orbital Naming Rules"},
     "btn_browse_orbital": {"zh": "浏览轨道", "en": "Browse MOs"},
+    "tab_orbit_hint": {"zh": "双击行启动VMD预览", "en": "Double-click row for VMD preview"},
+    "lbl_orbit_hint": {"zh": "双击行可视化", "en": "Double-click row to visualize"},
     # ── Orbital browser dialog ──
     "dlg_orbital_browser": {"zh": "轨道浏览器", "en": "Orbital Browser"},
     "dlg_orbital_sys_info": {"zh": "体系: {n_a}α + {n_b}β 电子 | {n_basis} 基函数 | HOMO={homo} LUMO={lumo}", "en": "System: {n_a}α + {n_b}β e | {n_basis} basis | HOMO={homo} LUMO={lumo}"},
@@ -224,8 +227,8 @@ TR = {
     "dlg_select_input_folder": {"zh": "选择输入文件夹", "en": "Select Input Folder"},
     "dlg_select_input_file": {"zh": "选择输入文件", "en": "Select Input File"},
     "dlg_input_filter": {
-        "zh": "所有支持的 (*.fchk *.log *.out *.cub *.cube *.molden *.molden.input);;格式化 Checkpoint (*.fchk);;Gaussian Log (*.log *.out);;Cube (*.cub *.cube);;所有文件 (*.*)",
-        "en": "All Supported (*.fchk *.log *.out *.cub *.cube *.molden *.molden.input);;Formatted Checkpoint (*.fchk);;Gaussian Log (*.log *.out);;Cube (*.cub *.cube);;All Files (*.*)"
+        "zh": "所有支持的 (*.fchk *.log *.out *.cub *.cube *.xyz *.molden *.molden.input);;格式化 Checkpoint (*.fchk);;Gaussian Log (*.log *.out);;XYZ (*.xyz);;Cube (*.cub *.cube);;所有文件 (*.*)",
+        "en": "All Supported (*.fchk *.log *.out *.cub *.cube *.xyz *.molden *.molden.input);;Formatted Checkpoint (*.fchk);;Gaussian Log (*.log *.out);;XYZ (*.xyz);;Cube (*.cub *.cube);;All Files (*.*)"
     },
     "dlg_select_output": {"zh": "选择输出目录", "en": "Select Output Directory"},
     # ── Preview dialogs ──
