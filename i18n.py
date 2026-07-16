@@ -74,6 +74,7 @@ TR = {
     # ── Path panel ──
     "lbl_multiwfn": {"zh": "Multiwfn:", "en": "Multiwfn:"},
     "lbl_vmd": {"zh": "VMD:", "en": "VMD:"},
+    "lbl_tachyon": {"zh": "Tachyon:", "en": "Tachyon:"},
     "placeholder_mw": {"zh": "Multiwfn.exe 路径", "en": "Path to Multiwfn.exe"},
     "placeholder_vmd": {"zh": "vmd.exe 路径", "en": "Path to vmd.exe"},
     "btn_browse": {"zh": "浏览", "en": "Browse"},

@@ -2087,7 +2087,7 @@ class OrbitalVisApp(QMainWindow):
         return {
             "multiwfn": self.paths["multiwfn"],
             "vmd": self.paths["vmd"],
-            "tachyon": backend.find_tachyon(os.path.dirname(self.paths["vmd"])),
+            "tachyon": self.paths.get("tachyon", backend.find_tachyon(os.path.dirname(self.paths["vmd"]))),
         }
 
     def _show_rules_dialog(self):

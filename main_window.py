@@ -1065,7 +1065,7 @@ class OrbitalVisApp(QMainWindow):
         return {
             "multiwfn": self.paths["multiwfn"],
             "vmd": self.paths["vmd"],
-            "tachyon": find_tachyon(os.path.dirname(self.paths["vmd"])),
+            "tachyon": self.paths.get("tachyon", find_tachyon(os.path.dirname(self.paths["vmd"]))),
         }
 
     def _show_rules_dialog(self):
@@ -1474,12 +1474,25 @@ class OrbitalVisApp(QMainWindow):
         vmd_row.addWidget(btn_browse_vmd)
         form.addRow(self._tr("lbl_vmd"), vmd_row)
 
+        # Tachyon row
+        tachyon_row = QHBoxLayout()
+        self.path_tachyon_edit = QLineEdit(self.paths.get("tachyon", ""))
+        self.path_tachyon_edit.setMinimumWidth(300)
+        tachyon_row.addWidget(self.path_tachyon_edit)
+        btn_browse_tachyon = QPushButton(self._tr("btn_browse"))
+        btn_browse_tachyon.clicked.connect(
+            lambda: self._browse_file_dialog(self.path_tachyon_edit, "tachyon"))
+        tachyon_row.addWidget(btn_browse_tachyon)
+        form.addRow(self._tr("lbl_tachyon"), tachyon_row)
+
         layout.addLayout(form)
 
         btn_save = QPushButton(self._tr("btn_save"))
         btn_save.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         btn_save.clicked.connect(lambda: self._do_save_paths(
-            None, self.path_mw_edit.text().strip(), self.path_vmd_edit.text().strip()))
+            None, self.path_mw_edit.text().strip(),
+            self.path_vmd_edit.text().strip(),
+            self.path_tachyon_edit.text().strip()))
         layout.addWidget(btn_save)
 
         return grp
@@ -1569,14 +1582,17 @@ class OrbitalVisApp(QMainWindow):
         if path:
             target_widget.setText(path)
 
-    def _do_save_paths(self, dlg, mw, vmd):
+    def _do_save_paths(self, dlg, mw, vmd, tachyon=""):
         if mw:
             self.paths["multiwfn"] = mw
             self.path_mw_edit.setText(mw)
         if vmd:
             self.paths["vmd"] = vmd
             self.path_vmd_edit.setText(vmd)
-        tachyon = find_tachyon(os.path.dirname(vmd or self.paths["vmd"]))
+        # 若用户未指定 tachyon，则自动检测 VMD 目录下的版本
+        tachyon = tachyon or find_tachyon(os.path.dirname(vmd or self.paths["vmd"]))
+        self.paths["tachyon"] = tachyon
+        self.path_tachyon_edit.setText(tachyon)
         backend.save_config(
             self.paths["multiwfn"], self.paths["vmd"], tachyon)
         self._append_log(self._tr("log_paths_saved",
