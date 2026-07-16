@@ -778,14 +778,21 @@ class OrbitalVisApp(QMainWindow):
         return target.grp_draw_bond
 
     def closeEvent(self, event):
-        """关闭程序时，强制关闭 VMD（如果仍在运行）。"""
-        # 先尝试通过 socket 优雅关闭
-        self._send_vmd_cmd("quit")
+        """关闭程序时，快速清理资源。"""
+        # 1) 用短超时尝试优雅关闭 VMD（不阻塞）
+        try:
+            sock = getattr(self._vmd_session, '_sock', None)
+            if sock and self.vmd_port:
+                sock.settimeout(0.5)
+                sock.sendall(b"quit\n")
+        except Exception:
+            pass
+        # 2) 清理 socket
         self._close_persist_sock()
-        # 再确保进程被终止
+        # 3) 强制终止 VMD 进程（带超时）
         try:
             subprocess.run(["taskkill", "/IM", "vmd.exe", "/F"],
-                           capture_output=True, timeout=5)
+                           capture_output=True, timeout=3)
         except Exception:
             pass
         event.accept()
