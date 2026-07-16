@@ -69,6 +69,8 @@ def main():
         app.setPalette(tip_pal)
         window = OrbitalVisApp()
         window.show()
+        # 强制立即渲染窗口框架，然后 QTimer 会触发 _deferred_init
+        QApplication.processEvents()
         sys.exit(app.exec_())
 
 

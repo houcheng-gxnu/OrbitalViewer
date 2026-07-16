@@ -67,15 +67,17 @@ class VMDOrbitalSession:
     ]
 
     def __init__(self, vmd_exe=None, tachyon_exe=None, multiwfn_exe=None,
-                 log_func=None):
+                 log_func=None, paths=None):
         """
         Args:
             vmd_exe: VMD 可执行文件路径，默认从 fchk_orbital.ini 读取
             tachyon_exe: Tachyon 渲染器路径
             multiwfn_exe: Multiwfn 路径（仅 gen_cubes 需要）
             log_func: 日志回调函数 Callable[[str], None]，None 则用 print
+            paths: 预加载的路径字典，避免重复读 ini
         """
-        paths = backend.load_config()
+        if paths is None:
+            paths = backend.load_config()
         self.vmd_exe = vmd_exe or paths.get("vmd", backend.DEFAULT_VMD)
         self.tachyon_exe = tachyon_exe or paths.get("tachyon", backend.DEFAULT_TACHYON)
         self.multiwfn_exe = multiwfn_exe or paths.get("multiwfn", backend.DEFAULT_MULTIWFN)

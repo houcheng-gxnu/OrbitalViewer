@@ -202,7 +202,7 @@ class OrbitalVisApp(QMainWindow):
         self.paths = backend.load_config()
         self.running = False
         # ── VMD 会话（委托给 orbital_viewer_lib）──
-        self._vmd_session = ovlib.VMDOrbitalSession(log_func=self._append_log)
+        self._vmd_session = ovlib.VMDOrbitalSession(log_func=self._append_log, paths=self.paths)
         self.vmd_port = None       # 读取时从 session 同步
         self.vmd_render_dir = None # 读取时从 session 同步
         self.vmd_cube_path = None
@@ -264,14 +264,9 @@ class OrbitalVisApp(QMainWindow):
 
         self._setup_ui()
         self._setup_shortcuts()
-        self._apply_theme()
-        self._apply_lang_ui()
 
-        # 启动日志
-        self._append_log("═" * 50)
-        self._append_log("OrbitalViewer 5.3 已启动 — 欢迎使用轨道可视化工具")
-        self._append_log("请拖放 .fchk / .log 文件到界面，或使用「浏览轨道」载入轨道数据")
-        self._append_log("═" * 50)
+        # 延迟加载：QSS 主题、语言、图标等非关键初始化在窗口显示后执行
+        QTimer.singleShot(10, self._deferred_init)
 
     def _setup_ui(self):
         central = QWidget()
@@ -908,6 +903,18 @@ class OrbitalVisApp(QMainWindow):
 
     def _setup_shortcuts(self):
         pass
+
+    def _deferred_init(self):
+        """窗口显示后执行的延迟初始化，减少启动白屏时间。"""
+        # QSS 主题（首次加载最重）
+        self._apply_theme()
+        # 语言 UI
+        self._apply_lang_ui()
+        # 欢迎日志
+        self._append_log("═" * 50)
+        self._append_log("OrbitalViewer 5.3 已启动 — 欢迎使用轨道可视化工具")
+        self._append_log("请拖放 .fchk / .log 文件到界面，或使用「浏览轨道」载入轨道数据")
+        self._append_log("═" * 50)
 
     def keyPressEvent(self, event):
         key = event.key()
