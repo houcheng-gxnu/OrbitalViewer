@@ -401,7 +401,7 @@ class VMDOrbitalSession:
             dict: 样式配置字典，含 desc, pos_color, neg_color 等
         """
         name = style_name or self._current_style or "sob-art"
-        return backend.STYES.get(name, backend.STYLES["sob-art"])
+        return backend.STYLES.get(name, backend.STYLES["sob-art"])
 
     # ── Cube 生成（调用 Multiwfn）───────────────────────
 

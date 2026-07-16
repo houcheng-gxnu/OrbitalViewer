@@ -43,7 +43,28 @@ import math
 # ── Default Paths ────────────────────────────────────────
 DEFAULT_MULTIWFN = r"E:\Multiwfn_2026.4.10_bin_Win64\Multiwfn.exe"
 DEFAULT_VMD = r"C:\Program Files (x86)\University of Illinois\VMD\vmd.exe"
-DEFAULT_TACHYON = r"C:\Program Files (x86)\University of Illinois\VMD\tachyon_WIN32.exe"
+
+
+def find_tachyon(vmd_dir):
+    """在 VMD 目录自动查找 tachyon，优先 64 位版本。"""
+    import glob as _glob
+    vmd_dir = vmd_dir or ""
+    # 优先 64 位
+    t64 = os.path.join(vmd_dir, "tachyon_WIN64.exe")
+    if os.path.isfile(t64):
+        return t64
+    t32 = os.path.join(vmd_dir, "tachyon_WIN32.exe")
+    if os.path.isfile(t32):
+        return t32
+    # 兜底：匹配任意 tachyon*.exe
+    candidates = sorted(_glob.glob(os.path.join(vmd_dir, "tachyon*.exe")))
+    if candidates:
+        return candidates[0]
+    # 实在找不到，返回默认名（由调用方判断）
+    return t64
+
+
+DEFAULT_TACHYON = find_tachyon(os.path.dirname(DEFAULT_VMD))
 
 # ── Atomic Data ──────────────────────────────────────────
 ELEMENT_SYMBOLS = {
@@ -2651,12 +2672,12 @@ def launch_gui():
 
         def _save_paths(self):
             vmd = self.var_vmd.get().strip()
-            tachyon = os.path.join(os.path.dirname(vmd), "tachyon_WIN32.exe")
+            tachyon = find_tachyon(os.path.dirname(vmd))
             save_config(self.var_mw.get().strip(), vmd, tachyon)
 
         def _get_paths(self):
             vmd = self.var_vmd.get().strip()
-            tachyon = os.path.join(os.path.dirname(vmd), "tachyon_WIN32.exe")
+            tachyon = find_tachyon(os.path.dirname(vmd))
             return {
                 "multiwfn": self.var_mw.get().strip(),
                 "vmd": vmd,

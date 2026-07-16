@@ -29,6 +29,7 @@ from PyQt5.QtGui import (
 
 # ── Backend imports ──
 import fchk_orbital as backend
+from fchk_orbital import find_tachyon
 import orbital_viewer_lib as ovlib
 from molcanvas import (
     MolCanvas, get_atoms_from_fchk, get_bonds_from_fchk,
@@ -1064,8 +1065,7 @@ class OrbitalVisApp(QMainWindow):
         return {
             "multiwfn": self.paths["multiwfn"],
             "vmd": self.paths["vmd"],
-            "tachyon": os.path.join(
-                os.path.dirname(self.paths["vmd"]), "tachyon_WIN32.exe"),
+            "tachyon": find_tachyon(os.path.dirname(self.paths["vmd"])),
         }
 
     def _show_rules_dialog(self):
@@ -1576,9 +1576,7 @@ class OrbitalVisApp(QMainWindow):
         if vmd:
             self.paths["vmd"] = vmd
             self.path_vmd_edit.setText(vmd)
-        tachyon = os.path.join(
-            os.path.dirname(vmd or self.paths["vmd"]),
-            "tachyon_WIN32.exe")
+        tachyon = find_tachyon(os.path.dirname(vmd or self.paths["vmd"]))
         backend.save_config(
             self.paths["multiwfn"], self.paths["vmd"], tachyon)
         self._append_log(self._tr("log_paths_saved",
