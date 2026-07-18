@@ -1,3 +1,5 @@
+**English** | [简体中文](./README_zh.md)
+
 <p align="center">
   <img src="https://img.shields.io/badge/version-5.3-blue.svg" alt="Version 5.3">
   <img src="https://img.shields.io/badge/python-3.8+-green.svg" alt="Python 3.8+">
@@ -7,104 +9,104 @@
 <h1 align="center">OrbitalViewer</h1>
 
 <p align="center">
-  <b>Multiwfn → VMD → Tachyon 一键串联，从 fchk 到期刊精美轨道图，两分钟搞定。</b>
+  <b>From fchk to publication-quality orbital figures in two minutes — Multiwfn → VMD → Tachyon, all in one click.</b>
   <br>
-  <sub>侯成课题组 · 广西师范大学</sub>
+  <sub>Hou Cheng Research Group · Guangxi Normal University</sub>
 </p>
 
 ---
 
-## 为什么选择 OrbitalViewer？
+## Why OrbitalViewer?
 
-传统的轨道可视化流程需要手动操作 Multiwfn 生成 cube，再用 VMD 加载、调参、渲染，步骤繁琐且容易出错。OrbitalViewer 将整个流程自动化封装，提供直观的 GUI 和 30+ 种预置渲染风格，让你专注于科研本身。
+Traditional orbital visualization workflows require manually running Multiwfn to generate cube files, then loading into VMD, tweaking parameters, and rendering — tedious and error-prone. OrbitalViewer automates the entire pipeline with an intuitive GUI and 30+ built-in rendering styles.
 
-| | 传统流程 | OrbitalViewer |
+| | Traditional | OrbitalViewer |
 |---|---|---|
-| cube 生成 | 手动输命令 | 双击轨道自动生成 |
-| VMD 预览 | 手动 load、调等值面 | 自动加载，滑块实时调整 |
-| 渲染出图 | 手动调灯光、材质 | 下拉选风格，一键出图 |
-| 批量处理 | 逐个文件重复操作 | 拖入文件夹，全自动批处理 |
-| 双语支持 | — | 中/English 即时切换 |
+| Cube generation | Manual command-line | Double-click to generate |
+| VMD preview | Manual load & tune | Auto-load with real-time sliders |
+| Rendering | Manual light/material tweaks | Dropdown style picker, one-click render |
+| Batch processing | Repeat per file | Drag folder, fully automatic |
+| Bilingual | — | Chinese/English in-app switch |
 
 <p align="center">
-  <i>📸 截图示例 — 拖放 fchk，双击轨道，选择风格，一键出图</i>
+  <i>📸 Drag fchk → double-click orbital → pick style → render. That's it.</i>
   <br>
-  <!-- TODO: 在此处添加截图 -->
+  <!-- TODO: Add screenshots here -->
   <!-- <img src="docs/screenshot.png" width="800" alt="Screenshot"> -->
 </p>
 
 ---
 
-## 功能特性
+## Features
 
-### 🧬 智能文件加载
-- **拖放即用** — 支持 `.fchk`、`.log`、`.out`、`.cub`、`.cube`、`.xyz`，自动识别文件类型
-- **自动成键** — 导入结构后自动计算化学键，2D 画布实时预览
+### 🧬 Smart File Loading
+- **Drag & drop** — Supports `.fchk`, `.log`, `.out`, `.cub`, `.cube`, `.xyz` files with automatic format detection
+- **Auto bonding** — Chemical bonds computed and rendered in a 2D preview canvas
 
-### 📊 轨道浏览器
-- **双标签布局** — 开壳层 α/β 电子自动分标签紧邻排列
-- **占据态可视化** — ⬆️⬇️ 双占据 / ⬆️ α 单电子 / ⬇️ β 单电子 / ⬜ 空轨道
-- **完整信息展示** — 轨道编号、能量 (a.u.)、能量 (eV)、占据数
-- **双击即生成** — 双击任意行，自动调用 Multiwfn 生成 cube 并发送至 VMD
+### 📊 Orbital Browser
+- **Dual-tab layout** — Open-shell α/β electrons auto-separated into adjacent tabs
+- **Occupation visualization** — ⬆️⬇️ doubly occupied / ⬆️ α single / ⬇️ β single / ⬜ empty
+- **Full information** — Orbital index, energy (a.u.), energy (eV), occupation number
+- **Double-click to generate** — Automatically run Multiwfn to produce cube and send to VMD
 
-### 🎬 VMD 实时预览
-- **等值面滑块** — 拖动滑块，VMD 中等值面实时同步（0.01 ~ 0.10）
-- **透明度控制** — 独立调整正/负相等值面透明度
-- **多轨道同时显示** — 支持同时加载多条轨道，各自独立配色
-- **一键隐藏氢原子** — 突出重原子骨架，可保留指定 H
+### 🎬 Real-time VMD Preview
+- **Isosurface slider** — Drag to adjust isovalue in VMD in real time (0.01–0.10)
+- **Opacity control** — Independent adjustment for positive/negative isosurfaces
+- **Multi-orbital display** — Load multiple orbitals simultaneously with independent colors
+- **One-click hide hydrogens** — Highlight heavy-atom backbone, with option to keep selected H
 
-### 🎨 30+ 内置渲染风格
+### 🎨 30+ Built-in Rendering Styles
 
-| 类别 | 风格 | 数量 |
-|------|------|:---:|
-| **vcube2.0（钟成）** | sob-art, ao-shiny, ao-chalky, white-green, white-red, morandi-blue, morandi-green, morandi-orange, morandi-red, vmwfn0, vmwfn1, IQmol | 12 |
-| **IboView 风格** | iboview-crystal, iboview-dark, iboview-green-pink, iboview-purple-blue, iboview-cyan-yellow, iboview-orange-teal, iboview-rainbow | 7 |
-| **原创精选** | aurora-teal, midnight-gold, lavender-mint, sunset-fire, ocean-depth, rose-quartz, forest-emerald, neon-cyber, cherry-blossom, graphite-ink, lakers, blood-orange, Gaussview | 13+ |
+| Category | Styles | Count |
+|----------|--------|:---:|
+| **vcube2.0 (Zhong Cheng)** | sob-art, ao-shiny, ao-chalky, white-green, white-red, morandi-blue, morandi-green, morandi-orange, morandi-red, vmwfn0, vmwfn1, IQmol | 12 |
+| **IboView Style** | iboview-crystal, iboview-dark, iboview-green-pink, iboview-purple-blue, iboview-cyan-yellow, iboview-orange-teal, iboview-rainbow | 7 |
+| **Original Designs** | aurora-teal, midnight-gold, lavender-mint, sunset-fire, ocean-depth, rose-quartz, forest-emerald, neon-cyber, cherry-blossom, graphite-ink, lakers, blood-orange, Gaussview | 13+ |
 
-### 🖼️ Tachyon 光线追踪渲染
-- **4 种渲染模式** — Solid, CPK, Sob-Multi, Sob-Art
-- **高分辨率输出** — 支持 BMP/PNG，分辨率可达 3000+
-- **可选透明背景** — 便于后期排版拼接
-- **阴影控制** — 开关阴影、AO（环境光遮蔽）
-- **Tachyon 路径自定义** — 支持选择任意版本的 Tachyon 渲染器
+### 🖼️ Tachyon Ray Tracing
+- **4 render modes** — Solid, CPK, Sob-Multi, Sob-Art
+- **High resolution** — BMP/PNG output up to 3000+ pixels
+- **Transparent background** — Optional for post-processing
+- **Shadow control** — Toggle shadows and ambient occlusion (AO)
+- **Custom Tachyon path** — Choose any Tachyon binary version
 
-### ✏️ 虚线绘制工具
-- **一键锁定原子对** — 画布与 VMD 同步绘制虚线键
-- **8 种颜色 + 5 种线型** — 圆点、虚线、圆柱、锥形、线段，下拉即时生效
-- **标注氢键与分子间相互作用**
+### ✏️ Dashed Bond Tool
+- **One-click atom-pair locking** — Canvas and VMD synchronized dashed bonds
+- **8 colors + 5 line styles** — Dots, dashes, cylinders, cones, segments; dropdown instant preview
+- **Annotate hydrogen bonds and intermolecular interactions**
 
-### 🔄 高级叠加模式
-- 选中两条轨道，同步生成 cube 并叠加渲染
-- 方便对比 HOMO/LUMO 或不同等值面阈值
+### 🔄 Advanced Overlay Mode
+- Select two orbitals for simultaneous cube generation and overlay rendering
+- Compare HOMO/LUMO or different isovalue thresholds side by side
 
-### 📦 批量处理
-- 拖入文件夹，自动遍历所有 fchk 文件
-- 支持命令行批处理，可自定义轨道、风格、分辨率
+### 📦 Batch Processing
+- Drop a folder to process all fchk files automatically
+- Command-line batch mode with customizable orbitals, styles, and resolution
 
-### 🌐 中英双语
-- UI 即时切换，无需重启
-- 完整覆盖所有界面文字与提示
+### 🌐 Bilingual UI
+- Chinese / English instant switch, no restart required
+- Full coverage of all UI text and tooltips
 
-### 📋 运行日志
-- 16px 等宽字体，彩色标签（`VMD` / `OK` / `ERR` / `GEN`）
-- 带时间戳，可复制导出
+### 📋 Runtime Log
+- 16px monospace font, color-coded labels (`VMD` / `OK` / `ERR` / `GEN`)
+- Timestamped, ready to copy and export
 
 ---
 
-## 快速开始
+## Quick Start
 
-### 环境要求
+### Requirements
 
-| 组件 | 用途 | 安装 |
-|------|------|------|
-| Python 3.8+ | 运行环境 | [python.org](https://www.python.org/) |
-| PyQt5 | GUI 界面 | `pip install PyQt5` |
-| NumPy | 数值计算 | `pip install numpy` |
-| [Multiwfn](http://sobereva.com/multiwfn/) | fchk → cube | 下载后配置路径 |
-| [VMD](https://www.ks.uiuc.edu/Research/vmd/) | 3D 预览 + 渲染 | 安装后配置路径 |
-| Tachyon | 光线追踪 | 随 VMD 附带 |
+| Component | Purpose | Installation |
+|-----------|---------|-------------|
+| Python 3.8+ | Runtime | [python.org](https://www.python.org/) |
+| PyQt5 | GUI | `pip install PyQt5` |
+| NumPy | Numerical computing | `pip install numpy` |
+| [Multiwfn](http://sobereva.com/multiwfn/) | fchk → cube | Download & configure path |
+| [VMD](https://www.ks.uiuc.edu/Research/vmd/) | 3D preview & rendering | Install & configure path |
+| Tachyon | Ray tracing | Bundled with VMD |
 
-### 安装
+### Installation
 
 ```bash
 git clone https://github.com/houcheng-gxnu/OrbitalViewer.git
@@ -112,9 +114,9 @@ cd OrbitalViewer
 pip install PyQt5 numpy
 ```
 
-### 配置工具路径
+### Configure Tool Paths
 
-首次启动时在 GUI 中浏览选择，或手动编辑 `fchk_orbital.ini`：
+On first launch, browse to each tool in the GUI settings, or manually edit `fchk_orbital.ini`:
 
 ```ini
 [paths]
@@ -123,98 +125,98 @@ vmd      = C:\Program Files (x86)\University of Illinois\VMD\vmd.exe
 tachyon  = C:\Program Files (x86)\University of Illinois\VMD\tachyon_WIN64.exe
 ```
 
-> **提示**：Multiwfn 和 VMD 均可通过 GUI 设置界面浏览选择路径，配置自动保存。
+> **Tip**: Both Multiwfn and VMD paths can be configured through the GUI settings dialog — configuration is auto-saved.
 
-### 启动
+### Launch
 
 ```bash
-# GUI 模式（默认中文）
+# GUI mode (defaults to Chinese)
 python main.py
 
-# 英文界面 — 启动后从菜单切换 Language / 语言 → English
+# English UI — switch from menu: Language / 语言 → English
 ```
 
-### 命令行模式
+### Command-Line Mode
 
 ```bash
-# 单个文件，HOMO 轨道，soba 推荐风格
+# Single file, HOMO, soba-recommended style
 python main.py input.fchk --mo h --iso 0.05 --style sob-art
 
-# 批量处理文件夹，HOMO + LUMO
+# Batch folder, HOMO + LUMO
 python main.py ./fchk_folder/ --mo h,l --iso 0.05
 
-# 指定轨道、风格、高分辨率
+# Custom orbitals, style, and high resolution
 python main.py input.fchk --mo h-1,h,l,l+1 --iso 0.04 --style lakers --res 3000,2250
 
-# 仅生成 cube，不渲染（用于调试）
+# Cube only, no render (useful for debugging)
 python main.py ./folder/ --mo h --grid 3 --no-render
 ```
 
-### 命令行参数详解
+### Command-Line Arguments
 
-| 参数 | 类型 | 默认值 | 说明 |
-|------|------|--------|------|
-| `input` | str | — | fchk 文件路径或文件夹路径 |
-| `--mo` | str | `h` | 轨道选择，支持：`h` (HOMO), `l` (LUMO), `h-1` (HOMO-1), 数字编号, 逗号分隔多项 |
-| `--iso` | float | `0.05` | 等值面阈值 |
-| `--grid` | int | `2` | 网格质量：1=低, 2=中, 3=高 |
-| `--style` | str | `sob-art` | 渲染风格，可选值见 `fchk_orbital.py` 中 `STYLES` 字典 key |
-| `--res` | str | `2000,1500` | 输出分辨率 `宽,高` |
-| `--no-render` | flag | — | 仅生成 cube 文件，不渲染出图 |
-| `--out` | str | 输入同目录 | 输出目录 |
+| Argument | Type | Default | Description |
+|----------|------|---------|-------------|
+| `input` | str | — | fchk file path or folder path |
+| `--mo` | str | `h` | Orbital selection: `h` (HOMO), `l` (LUMO), `h-1` (HOMO-1), numeric index, comma-separated for multiples |
+| `--iso` | float | `0.05` | Isosurface threshold value |
+| `--grid` | int | `2` | Grid quality: 1=low, 2=medium, 3=high |
+| `--style` | str | `sob-art` | Render style; see `STYLES` dict keys in `fchk_orbital.py` |
+| `--res` | str | `2000,1500` | Output resolution as `width,height` |
+| `--no-render` | flag | — | Only generate cube files, skip Tachyon rendering |
+| `--out` | str | same as input | Output directory |
 
 ---
 
-## 项目结构
+## Project Structure
 
 ```
 OrbitalViewer/
-├── main.py                # 入口模块（GUI 启动 + 命令行批处理）
-├── main_window.py         # 主窗口（UI 布局、信号/槽交互逻辑）
-├── molcanvas.py           # 2D 分子结构画布（Qt 自定义 QPainter 绘制）
-├── fchk_orbital.py        # 后端核心引擎（cube 生成、VMD 控制、Tachyon 渲染管道、30+ 风格定义）
-├── fchk_parser.py         # fchk 文件解析（提取轨道能量、占据数等）
-├── orbital_viewer_lib.py  # 共享工具函数库
-├── orbital_viewer_v53.py  # 旧版兼容层
-├── workers.py             # QThread 后台工作线程（异步 cube 生成与渲染）
-├── widgets.py             # 自定义 QSS 控件（滑块、组合框、按钮等）
-├── dialogs.py             # 对话框（设置、关于、路径配置）
-├── i18n.py                # 国际化翻译模块（中/English 字典）
-├── theme.py               # QSS 主题样式表
-├── OrbitalViewer.spec     # PyInstaller 打包配置
+├── main.py                # Entry point (GUI launcher + CLI batch)
+├── main_window.py         # Main window (UI layout, signal/slot logic)
+├── molcanvas.py           # 2D molecular structure canvas (Qt QPainter)
+├── fchk_orbital.py        # Backend engine (cube gen, VMD control, Tachyon pipeline, 30+ styles)
+├── fchk_parser.py         # fchk file parser (orbital energies, occupations)
+├── orbital_viewer_lib.py  # Shared utility library
+├── orbital_viewer_v53.py  # Legacy compatibility layer
+├── workers.py             # QThread workers (async cube gen & render)
+├── widgets.py             # Custom QSS widgets (sliders, combos, buttons)
+├── dialogs.py             # Dialogs (settings, about, path config)
+├── i18n.py                # Internationalization (Chinese/English dictionaries)
+├── theme.py               # QSS theme stylesheet
+├── OrbitalViewer.spec     # PyInstaller packaging config
 └── README.md
 ```
 
 ---
 
-## 打包为独立 EXE
+## Build Standalone EXE
 
-无需安装 Python 即可运行，适合分发给非技术用户。
+No Python required — ideal for distributing to non-technical users.
 
 ```bash
 pip install pyinstaller
 pyinstaller OrbitalViewer.spec --clean
 ```
 
-输出：`dist/OrbitalViewer.exe`（单文件，无控制台窗口）
+Output: `dist/OrbitalViewer.exe` (single file, no console window).
 
 ---
 
-## 致谢
+## Acknowledgements
 
-OrbitalViewer 站在巨人的肩膀上：
+OrbitalViewer stands on the shoulders of giants:
 
-- **[Multiwfn](http://sobereva.com/multiwfn/)** — 卢天老师开发的量子化学波函数分析程序，引用超 4 万篇论文。OrbitalViewer 使用其从 fchk 生成 cube 文件。
-- **[vcube2.0](https://github.com/Zhong-Cheng-2020/vcube2.0)** — 钟成提供的 11 套精美 VMD 轨道渲染配置，大部分内置风格来自 vcube2.0。
+- **[Multiwfn](http://sobereva.com/multiwfn/)** — Wavefunction analysis program by Prof. Tian Lu, with 40,000+ citations. OrbitalViewer uses it to generate cube files from fchk.
+- **[vcube2.0](https://github.com/Zhong-Cheng-2020/vcube2.0)** — 11 beautiful VMD rendering configs by Zhong Cheng, which form the basis of most built-in styles.
 - **[VMD](https://www.ks.uiuc.edu/Research/vmd/)** — Humphrey, W., Dalke, A. and Schulten, K., "VMD: Visual Molecular Dynamics", J. Molec. Graphics, 1996, 14, 33–38.
 - **[Tachyon](http://jedi.ks.uiuc.edu/~johns/raytracer/)** — Stone, J. E., "An Efficient Library for Parallel Ray Tracing and Animation", M.Sc. Thesis, 1998.
-- **虚线绘制** — 来自 KeinSci 论坛 Eming 的 `draw_bond` Tcl 脚本。
+- **Dashed bond drawing** — Based on Eming's `draw_bond` Tcl script from the KeinSci forum.
 
 ---
 
-## 引用
+## Citation
 
-如果 OrbitalViewer 对你的研究有帮助，请在论文中引用：
+If OrbitalViewer helps your research, please cite:
 
 ```bibtex
 @software{OrbitalViewer2026,
@@ -226,15 +228,15 @@ OrbitalViewer 站在巨人的肩膀上：
 }
 ```
 
-同时请引用上述致谢中的对应工具文献。
+Please also cite the relevant tools listed in the Acknowledgements section.
 
-另见 [CITATION.cff](./CITATION.cff) 和 [CITATION.bib](./CITATION.bib)。
+See also [CITATION.cff](./CITATION.cff) and [CITATION.bib](./CITATION.bib).
 
 ---
 
-## 许可证
+## License
 
-MIT License — 详见 [LICENSE](./LICENSE) 文件。
+MIT License — see [LICENSE](./LICENSE) for details.
 
 ---
 
